@@ -84,7 +84,8 @@ def main() -> int:
         else:
             out = run_verify(a.run_dir)
     except Exception as e:
-        log_stderr(f"오류: {type(e).__name__}: {e}")
+        from .buyagent_export import BuyagentNotFound
+        log_stderr(f"오류: {e}" if isinstance(e, (BuyagentNotFound, ValueError)) else f"오류: {type(e).__name__}: {e}")
         print(json.dumps({"error": {"type": type(e).__name__, "message": str(e)}}, ensure_ascii=False))
         return 1
 

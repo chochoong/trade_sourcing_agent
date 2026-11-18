@@ -70,9 +70,29 @@ CATEGORY_HINTS = [
 ]
 
 
+class BuyagentNotFound(FileNotFoundError):
+    """buyagent 폴더·파일이 없을 때. 화면에 그대로 보여도 되는 문구만 담음 (Errno 없음)."""
+
+
+def check_buyagent(buyagent_dir=None) -> Path:
+    """buyagent 폴더에 필요한 파일이 다 있는지 확인하고 경로를 돌려줌. 없으면 BuyagentNotFound."""
+    ba = Path(buyagent_dir) if buyagent_dir else DEFAULT_BUYAGENT
+    if not ba.is_dir():
+        raise BuyagentNotFound(
+            f"구매대행 모니터(buyagent) 폴더를 찾지 못했습니다: {ba}. "
+            "설치 위치가 다르면 .env 의 BUYAGENT_DIR 또는 --buyagent 로 경로를 지정하세요. "
+            "조사 결과는 그대로 저장되어 있습니다.")
+    missing = [rel for rel in ("config/categories.toml", "catalog/products.csv") if not (ba / rel).is_file()]
+    if missing:
+        raise BuyagentNotFound(
+            f"buyagent 폴더({ba})에 필요한 파일이 없습니다: {', '.join(missing)}. "
+            "buyagent 설치가 올바른지 확인하세요. 조사 결과는 그대로 저장되어 있습니다.")
+    return ba
+
+
 def load_categories(buyagent_dir=None) -> dict:
     import tomllib
-    path = (Path(buyagent_dir) if buyagent_dir else DEFAULT_BUYAGENT) / "config" / "categories.toml"
+    path = check_buyagent(buyagent_dir) / "config" / "categories.toml"
     with open(path, "rb") as f:
         return tomllib.load(f).get("categories", {})
 
@@ -201,14 +221,12 @@ def export(run_dir, category: str | None = None, buyagent_dir=None, write: bool 
     if wholesale and not allow_non_retail:
         raise ValueError(f"구매 방식이 retail 이 아님({stype}) → 도매가라 구매대행 원가로 쓸 수 없어 내보내지 않음. "
                          f"retail 로 다시 조사하거나, 꼭 필요하면 --allow-non-retail")
-    ba = Path(buyagent_dir) if buyagent_dir else DEFAULT_BUYAGENT
+    ba = check_buyagent(buyagent_dir)
     if not category:
         category, why = guess_category(payload.get("request") or {}, ba)
         if not category:
             raise ValueError(f"{why} → --category 로 지정하세요")
     products_csv, prices_csv = ba / "catalog" / "products.csv", ba / "catalog" / "manual_prices.csv"
-    if not products_csv.exists():
-        raise FileNotFoundError(f"buyagent 카탈로그를 찾지 못했습니다: {products_csv} (--buyagent 로 경로 지정)")
 
     min_score = DEFAULT_MIN_SCORE if min_score is None else min_score
     product, prices, skipped = build_rows(payload, category, run_dir.name, wholesale, min_score)

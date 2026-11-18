@@ -176,12 +176,21 @@ DEFAULT_MAX_QTY = {"retail": 10, "small_batch": 50}
 
 def export_to_buyagent(run_dir, log=log_stderr):
     """retail(구매대행) 조사 결과를 buyagent 카탈로그에 추가·갱신. 실패해도 조사 결과는 그대로 둠."""
-    from .buyagent_export import export
+    from .buyagent_export import BuyagentNotFound, export
     try:
         r = export(run_dir, write=True)
+    except (BuyagentNotFound, ValueError) as e:
+        msg = str(e)
+    except OSError as e:
+        msg = (f"buyagent 파일을 읽거나 쓰지 못했습니다{f' ({e.filename})' if e.filename else ''}. "
+               "파일이 엑셀 등 다른 프로그램에서 열려 있으면 닫고 다시 내보내세요. 조사 결과는 그대로 저장되어 있습니다.")
     except Exception as e:
-        log(f"  ⚠ buyagent 내보내기 생략: {e}")
-        return {"error": str(e)}
+        msg = f"buyagent 내보내기 중 예상하지 못한 문제가 생겼습니다({type(e).__name__}). 조사 결과는 그대로 저장되어 있습니다."
+    else:
+        msg = None
+    if msg:
+        log(f"  ⚠ buyagent 내보내기 생략: {msg}")
+        return {"error": msg}
     for w in r["warnings"]:
         log(f"  ⚠ {w}")
     n = len(r["added"]) + len(r["updated"]) + len(r["unchanged"]) + len(r["kept_manual"])

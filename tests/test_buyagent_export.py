@@ -5,7 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from sourcing_agent.buyagent_export import MARKER, export
+from sourcing_agent import hub
+from sourcing_agent.buyagent_export import MARKER, BuyagentNotFound, export
 
 CATEGORIES = """
 [categories.smart_wearable]
@@ -76,6 +77,22 @@ class ExportTest(unittest.TestCase):
         r = export(self.run, buyagent_dir=self.ba, allow_non_retail=True)
         self.assertTrue(all("소량 사입 결과(도매가)" in x["memo"] for x in r["added"]))
         self.assertIn("B", [x["shop"] for x in r["added"]])   # 도매 허용 시 MOQ 2 도 넘김
+
+    def test_missing_buyagent_is_readable(self):
+        with self.assertRaises(BuyagentNotFound) as cm:
+            export(self.run, buyagent_dir=self.ba.parent / "없는폴더")
+        self.assertNotIn("Errno", str(cm.exception))
+        self.assertIn("BUYAGENT_DIR", str(cm.exception))
+        (self.ba / "catalog" / "products.csv").unlink()
+        with self.assertRaisesRegex(BuyagentNotFound, "catalog/products.csv"):
+            export(self.run, buyagent_dir=self.ba, category="smart_wearable")
+        # 대시보드 경로(hub)도 Errno 없이 사람이 읽는 문구만 남김
+        logs = []
+        from unittest import mock
+        with mock.patch("sourcing_agent.buyagent_export.DEFAULT_BUYAGENT", self.ba.parent / "없는폴더"):
+            r = hub.export_to_buyagent(self.run, log=logs.append)
+        self.assertIn("찾지 못했습니다", r["error"])
+        self.assertFalse(any("Errno" in x for x in logs))
 
     def test_preview_does_not_write(self):
         before = (self.ba / "catalog" / "manual_prices.csv").read_bytes()
