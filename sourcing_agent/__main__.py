@@ -18,6 +18,7 @@ import sys
 import yaml
 
 from .agent import find_suppliers, log_stderr, run_discover, run_verify
+from .errors import SourcingError
 
 
 def main() -> int:
@@ -84,9 +85,10 @@ def main() -> int:
         else:
             out = run_verify(a.run_dir)
     except Exception as e:
-        from .buyagent_export import BuyagentNotFound
-        log_stderr(f"오류: {e}" if isinstance(e, (BuyagentNotFound, ValueError)) else f"오류: {type(e).__name__}: {e}")
-        print(json.dumps({"error": {"type": type(e).__name__, "message": str(e)}}, ensure_ascii=False))
+        from .errors import friendly
+        cause = e.__cause__ if isinstance(e, SourcingError) and e.__cause__ else e
+        log_stderr(f"오류: {friendly(e)}")
+        print(json.dumps({"error": {"type": type(cause).__name__, "message": friendly(e)}}, ensure_ascii=False))
         return 1
 
     print(json.dumps(out, ensure_ascii=False, indent=2))

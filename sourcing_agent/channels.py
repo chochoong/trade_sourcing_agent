@@ -11,6 +11,7 @@ from urllib.parse import quote, quote_plus
 
 import yaml
 
+from .errors import friendly
 from .paths import CONFIG, PROMPTS
 
 CHANNELS_FILE = CONFIG / "channels.yaml"
@@ -128,5 +129,5 @@ def assess_channels(llm, request: dict, log=None) -> list[dict]:
         assessment = llm.ask_json(system, user, use_search=True, stage="channels")
     except Exception as e:  # 사이트 평가는 부가 정보 — 실패해도 공급처 결과는 그대로 냄
         if log:
-            log(f"      구매 사이트 평가 실패 (고유 점수·링크만 표시): {type(e).__name__}: {e}")
+            log(f"      구매 사이트 평가 실패 (고유 점수·링크만 표시): {friendly(e)}")
     return build_channels(cfg, request, assessment)

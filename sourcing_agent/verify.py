@@ -4,6 +4,7 @@ import json
 import anthropic
 import yaml
 
+from .errors import friendly
 from .manual import read_manual
 from .normalize import order_urls, parse_usd_price
 from .paths import PROMPTS
@@ -63,7 +64,7 @@ def verify_one(llm, candidate: dict, request: dict, rubric: dict) -> dict:
     except FATAL_ERRORS:
         raise
     except Exception as e:  # 응답 형식 오류, 일시적 장애 등은 한 업체만 실패 처리하고 계속
-        v = _failed(e)
+        v = _failed(friendly(e))
 
     if not isinstance(v, dict):
         v = _failed(f"응답 형식이 객체가 아님 ({type(v).__name__})")

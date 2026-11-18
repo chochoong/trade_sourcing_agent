@@ -10,12 +10,14 @@
 단계(stage)는 바꾸지 않는다 — 공급처를 골라 협상으로 넘기는 건 사람/3번 에이전트의 일.
 """
 import json
+from contextlib import contextmanager
 from pathlib import Path
 
 from trade_hub import db
 
 from .agent import log_stderr, run_discover, run_verify
 from .discover import parse_qty, parse_years
+from .errors import SourcingError, friendly
 from .llm import LLM
 from .normalize import best_url, parse_usd_price
 from .scoring import load_rubric
@@ -185,7 +187,7 @@ def export_to_buyagent(run_dir, log=log_stderr):
         msg = (f"buyagent 파일을 읽거나 쓰지 못했습니다{f' ({e.filename})' if e.filename else ''}. "
                "파일이 엑셀 등 다른 프로그램에서 열려 있으면 닫고 다시 내보내세요. 조사 결과는 그대로 저장되어 있습니다.")
     except Exception as e:
-        msg = f"buyagent 내보내기 중 예상하지 못한 문제가 생겼습니다({type(e).__name__}). 조사 결과는 그대로 저장되어 있습니다."
+        msg = f"buyagent 내보내기 실패: {friendly(e)} 조사 결과는 그대로 저장되어 있습니다."
     else:
         msg = None
     if msg:
@@ -201,6 +203,18 @@ def export_to_buyagent(run_dir, log=log_stderr):
         log(f"  🛒 buyagent: 품목 {r['product_id']}({r['category']}) · {r['summary']} · 제외 {len(r['skipped'])}곳")
     return {"product_id": r["product_id"], "category": r["category"], "summary": r["summary"],
             "skipped": len(r["skipped"])}
+
+
+@contextmanager
+def _readable_errors():
+    """실패를 SourcingError(한국어 문구)로 바꿔 올림 → trade_hub 가 agent_runs.error 에 그 문구를 남김.
+    원래 예외는 __cause__ 로 이어 둠."""
+    try:
+        yield
+    except SourcingError:
+        raise
+    except Exception as e:
+        raise SourcingError(friendly(e)) from e
 
 
 def run_from_db(ids=None, sourcing_type="small_batch", max_order_qty=None, dry_run=False, log=log_stderr,
@@ -221,7 +235,8 @@ def run_from_db(ids=None, sourcing_type="small_batch", max_order_qty=None, dry_r
 
     done = []
     args = {"ids": ids, "sourcing_type": sourcing_type, "max_order_qty": max_order_qty, "country": country}
-    with db.agent_run(conn, AGENT, provider="anthropic", model=LLM().model, args=args) as run:
+    with db.agent_run(conn, AGENT, provider="anthropic", model=LLM().model, args=args) as run, \
+            _readable_errors():
         for p, req in requests:
             log(f"\n▶ [{p['id']}] {p['name']} 공급처 조사")
             d = run_discover(req, log=log)
