@@ -1,0 +1,31 @@
+# 소싱 조건표 — 기계식 키보드 (테스트 판매용 소량 도매)
+# 테스트 판매가 잘 되면 sourcing_type: oem 으로 바꿔 OEM 공장을 찾으면 됩니다 (requests/example.yaml 참고).
+mode: supplier
+sourcing_type: small_batch     # small_batch = 소량 도매 / oem = 공장 맞춤 제작
+
+product: "기계식 키보드"
+product_en: "mechanical keyboard hot swappable wireless tri-mode ready to ship"
+product_zh: "机械键盘 热插拔 三模 现货 小批量"     # 1688용 중문 검색어
+hs_code: "8471.60"
+target_price: "개당 5만~20만 원 (매입 단가 기준, 약 USD 35~140)"
+moq: "50개 이하 (기성품, 로고 작업 불필요)"
+max_order_qty: 50              # 첫 구매 최대 수량 (1차 필터와 점수에 사용)
+
+# 국내 판매 시 KC 적합성평가(무선은 전파 인증 포함)를 수입자 명의로 받아야 하므로
+# 판매자가 시험성적서를 줄 수 있는지가 중요합니다.
+required_certs: ["CE", "FCC", "RoHS"]
+preferred_countries: ["China"]
+prefer_manufacturer: false     # 소량은 도매상·스토어도 OK (제조사 직영이면 OEM 전환 가점)
+
+platforms: ["Alibaba Ready to Ship", "1688", "AliExpress"]
+
+notes: |
+  - 테스트 판매용 소량 구매. 로고·각인 등 OEM 작업은 지금은 필요 없음
+  - 원하는 사양: 기계식, 핫스왑, 유선/2.4GHz/블루투스 3모드, 가스켓 마운트 우대
+  - 판매가 잘 되면 OEM 으로 전환할 계획 → 제조사 직영 스토어나 OEM 가능 업체면 표시할 것
+  - 로지텍, 레이저 등 유명 브랜드 디자인을 베낀 제품이나 가품은 제외할 것
+  - 리튬 배터리 내장 → MSDS, UN38.3 제공 가능 여부와 한국 배송 방법(항공 가능 여부) 확인
+  - 1688 판매자는 구매대행이 필요한지 표시할 것
+
+min_candidates: 20
+shortlist_size: 3

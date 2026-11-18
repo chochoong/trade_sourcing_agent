@@ -1,0 +1,5 @@
+anthropic>=0.40.0
+pyyaml>=6.0
+python-dotenv>=1.0
+# 공용 DB 연동(from-db 명령)에 필요: 1인 무역 공용 DB 패키지
+-e ../trade_hub

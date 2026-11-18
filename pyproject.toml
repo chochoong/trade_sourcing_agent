@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trade-sourcing-agent"
+version = "0.2.0"
+description = "1인 무역용 공급처 발굴 에이전트 (파이프라인 2단계)"
+requires-python = ">=3.10"
+dependencies = [
+    "anthropic>=0.40.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",
+]
+
+[project.scripts]
+sourcing-agent = "sourcing_agent.__main__:main"
+
+[tool.setuptools]
+packages = ["sourcing_agent"]

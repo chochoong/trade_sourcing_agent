@@ -1,0 +1,66 @@
+# 구매 사이트(채널) 점수표 — 공급처와 별도로 "이 품목을 어느 사이트에서 사는 게 좋은가"를 평가합니다.
+#
+# 점수 = 항목별 평가(0~5) ÷ 5 × 가중치, 합계 100점.
+#   - 품목별 항목(small_qty, price, selection): 매 실행마다 웹 검색으로 평가 (prompts/channels.md)
+#   - 사이트 고유 항목(protection, shipping, convenience, documents): 아래 base 에 고정 (품목과 무관, AI 비용 없음)
+# 사이트를 추가하려면 sites 에 항목을 하나 더 넣으세요. search 의 자리표시자:
+#   {en} 영문 검색어(URL 인코딩)  {en_dash} 공백을 - 로 바꾼 영문  {zh} 중문(UTF-8)  {zh_gbk} 중문(GBK, 1688용)
+
+items:
+  small_qty:   {label: 소량 구매 가능, kind: product, guide: "요청 수량(max_order_qty) 이하로 이 품목을 파는 판매자가 많으면 5, 일부 2~3, 거의 없으면 0"}
+  price:       {label: 가격, kind: product, guide: "배송비 포함 단가가 다른 사이트보다 싸면 5, 비슷하면 3, 비싸면 1, 확인 못 하면 0"}
+  selection:   {label: 상품 선택지, kind: product, guide: "원하는 사양의 상품·판매자가 많으면 5, 일부 3, 거의 없으면 0"}
+  protection:  {label: 구매자 보호, kind: base}
+  shipping:    {label: 한국 배송, kind: base}
+  convenience: {label: 거래 편의, kind: base}
+  documents:   {label: 서류 대응, kind: base}
+
+# 구매 방식별 가중치 (합계 100)
+weights:
+  retail:      {small_qty: 20, price: 15, selection: 10, protection: 20, shipping: 20, convenience: 10, documents: 5}
+  small_batch: {small_qty: 20, price: 20, selection: 10, protection: 15, shipping: 15, convenience: 10, documents: 10}
+  oem:         {small_qty: 10, price: 20, selection: 15, protection: 15, shipping: 10, convenience: 10, documents: 20}
+
+sites:
+  aliexpress:
+    label: AliExpress
+    suits: [retail, small_batch]
+    search: "https://www.aliexpress.com/w/wholesale-{en_dash}.html"
+    base: {protection: 5, shipping: 5, convenience: 5, documents: 1}
+    note: "1개부터 구매, 한국 직배송·한국어 지원, 구매자 보호(미배송·불량 환불). 단가는 도매보다 높고 시험성적서는 받기 어려움."
+  alibaba:
+    label: Alibaba (Ready to Ship)
+    suits: [retail, small_batch, oem]
+    search: "https://www.alibaba.com/trade/search?SearchText={en}"
+    base: {protection: 5, shipping: 4, convenience: 4, documents: 5}
+    note: "Trade Assurance 결제 보호, 판매자와 직접 채팅으로 시험성적서·인보이스 요청 쉬움. Ready to Ship 상품은 소량 가능."
+  "1688":
+    label: "1688"
+    suits: [retail, small_batch, oem]
+    search: "https://s.1688.com/selloffer/offer_search.htm?keywords={zh_gbk}"
+    base: {protection: 1, shipping: 1, convenience: 1, documents: 3}
+    note: "중국 내수 도매가로 가장 저렴. 해외 결제·배송이 안 되는 경우가 많아 구매대행·배송대행 필요, 분쟁 시 보호 약함."
+  taobao:
+    label: Taobao·Tmall
+    suits: [retail]
+    search: "https://s.taobao.com/search?q={zh}"
+    base: {protection: 3, shipping: 2, convenience: 3, documents: 1}
+    note: "소매 상품이 가장 다양. 해외 직배송은 일부만 되고 보통 배송대행 필요. Tmall 은 브랜드 공식 스토어 위주."
+  dhgate:
+    label: DHgate
+    suits: [retail, small_batch]
+    search: "https://www.dhgate.com/wholesale/search.do?searchkey={en}"
+    base: {protection: 3, shipping: 4, convenience: 4, documents: 1}
+    note: "소량 도매·해외 직배송. 가품·브랜드 도용 상품이 많아 상품 선별 주의."
+  made_in_china:
+    label: Made-in-China
+    suits: [small_batch, oem]
+    search: "https://www.made-in-china.com/multi-search/{en}/F1/1.html"
+    base: {protection: 3, shipping: 3, convenience: 3, documents: 5}
+    note: "제조사 비중이 높아 OEM·서류 요청에 유리. 소량 구매는 판매자 협의 필요."
+  globalsources:
+    label: Global Sources
+    suits: [oem]
+    search: "https://www.globalsources.com/searchList/products?keyWord={en}"
+    base: {protection: 3, shipping: 3, convenience: 3, documents: 5}
+    note: "검증된 수출 제조사 위주(전자·생활용품 강함). MOQ 가 커서 소량 구매엔 부적합."

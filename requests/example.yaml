@@ -1,0 +1,28 @@
+# 소싱 조건표 — 기계식 키보드 (OEM/ODM 공장 소싱)
+mode: supplier
+
+product: "기계식 키보드"
+product_en: "mechanical keyboard OEM hot swappable wireless"
+product_zh: "机械键盘 OEM 热插拔 三模"            # 1688용 중문 검색어
+hs_code: "8471.60"       # 컴퓨터 입력장치. 최종 코드는 통관 단계에서 확정
+target_price: "개당 5만~20만 원 (매입 단가 기준, 약 USD 35~140, FOB)"
+moq: "500개 이하 (샘플 1~5개 구매 가능 업체 우선)"
+
+# 공급처가 보유해야 할 인증/시험성적서.
+# 국내 판매 시 KC 전자파 적합성평가(무선은 무선 적합인증 포함)는 수입자 명의로 별도 진행해야 하며,
+# 공급처의 시험성적서가 있으면 KC 인증 비용과 기간을 줄일 수 있음.
+required_certs: ["CE", "FCC", "RoHS"]
+preferred_countries: ["China"]
+prefer_manufacturer: true
+
+platforms: ["Alibaba", "1688", "Global Sources", "Made-in-China"]
+
+notes: |
+  - 원하는 사양: 기계식, 핫스왑, 유선/2.4GHz/블루투스 3모드, 가스켓 마운트 우대
+  - 한글 각인 키캡 제작 가능 여부, 자체 로고 인쇄(OEM) 가능 여부를 꼭 확인할 것
+  - 로지텍, 레이저 등 유명 브랜드 디자인을 베낀 제품이나 가품은 제외할 것
+  - 리튬 배터리 내장 제품은 운송 서류(MSDS, UN38.3)를 제공할 수 있는지 확인할 것
+  - 광둥성 선전·둥관 지역의 키보드 전문 공장을 우선할 것
+
+min_candidates: 20
+shortlist_size: 3
