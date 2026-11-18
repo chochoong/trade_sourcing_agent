@@ -77,6 +77,7 @@ python -m sourcing_agent from-db 17 --type oem --max-qty 100   # 특정 품목�
 ```
 
 - 구매 방식 기본값은 `small_batch`(50개 이하)입니다. `--max-qty`를 생략하면 `retail`은 10개, `oem`은 수량 제한 없음.
+- `--country Japan` 이면 일본 공급처를 찾습니다 (아래 "일본 공급처 발굴"). 기본은 `China`.
 - `--type retail` 이면 조사가 끝난 뒤 결과를 구매대행 모니터(buyagent)에 자동으로 추가합니다 (아래 "구매대행으로 팔기", 끄려면 `--no-buyagent`).
 
 - 소싱 조건은 DB의 품목명·영어 검색어·FOB/판매가 시세·선정 이유·예상 규제·위험 요소로 채웁니다.
@@ -86,6 +87,29 @@ python -m sourcing_agent from-db 17 --type oem --max-qty 100   # 특정 품목�
   `tasks`에 "공급처 검토" 할 일이 생깁니다. 품목 단계(stage)는 바꾸지 않습니다.
 - 한 번 조사한 품목은 공급처를 못 찾았어도 자동으로 다시 돌리지 않습니다. 다시 하려면 번호를 지정하세요.
 - 공용 DB 위치는 환경변수 `TRADE_DB`(없으면 `../trade_hub/data/trade.db`).
+
+## 일본 공급처 발굴
+
+```bash
+python -m sourcing_agent from-db 23 --type retail --country Japan        # 일본 구매대행용
+python -m sourcing_agent from-db 23 --type small_batch --country Japan   # 일본 소량 사입용
+```
+
+- 조사 조건의 `preferred_countries` 가 `Japan` 이 되고, 일본어 검색어·엔화 원문+USD 환산·해외(한국) 거래 가능 여부 확인을 지시합니다.
+  요청 YAML 로 실행할 때는 `preferred_countries: [Japan]` 을 쓰면 됩니다.
+- 일본 사이트 API 는 쓰지 않습니다. 조사는 Claude 웹 검색, 사이트 검색 링크는 코드가 만듭니다.
+- 업체 검증: 국세청 법인번호 공표 사이트, 「特定商取引法に基づく表記」(사업자 정보 표기), 「会社概要」로 실존·주소 확인.
+- 구매 사이트 순위 (일본):
+
+  | 구매 방식 | 사이트 |
+  |---|---|
+  | `retail` | 라쿠텐 · Amazon.co.jp · Yahoo!ショッピング |
+  | `small_batch` | 라쿠텐 · Amazon.co.jp · NETSEA · SUPER DELIVERY(해외 바이어용 영문 사이트) |
+  | `oem` | NETSEA · SUPER DELIVERY |
+
+- 일본 쇼핑몰은 대부분 해외 배송이 안 돼 배송대행지가 필요하고, 도매몰은 일본 사업자만 거래하는 판매자가 많습니다.
+  그래서 사이트 고유 점수의 '한국 배송'이 낮게 잡혀 있습니다 (`config/channels.yaml`).
+- 구매대행(retail)은 buyagent 가 라쿠텐·Yahoo!쇼핑 최저가를 직접 감시하므로, 2번은 정품 판매처·공식몰 확인 위주로 쓰면 됩니다.
 
 ## 구매 사이트 순위
 

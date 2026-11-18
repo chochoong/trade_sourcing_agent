@@ -5,6 +5,9 @@
 #   - 사이트 고유 항목(protection, shipping, convenience, documents): 아래 base 에 고정 (품목과 무관, AI 비용 없음)
 # 사이트를 추가하려면 sites 에 항목을 하나 더 넣으세요. search 의 자리표시자:
 #   {en} 영문 검색어(URL 인코딩)  {en_dash} 공백을 - 로 바꾼 영문  {zh} 중문(UTF-8)  {zh_gbk} 중문(GBK, 1688용)
+#   {ja} 일본어(UTF-8)
+# countries: 이 사이트가 다루는 공급 국가 (생략하면 China). 조사 조건의 preferred_countries 첫 나라와 맞는 사이트만 평가.
+# shipping(한국 배송) 고유 점수: 일본 쇼핑몰은 대부분 해외 배송이 안 돼 배송대행지(배대지)가 필요하므로 낮게 둠.
 
 items:
   small_qty:   {label: 소량 구매 가능, kind: product, guide: "요청 수량(max_order_qty) 이하로 이 품목을 파는 판매자가 많으면 5, 일부 2~3, 거의 없으면 0"}
@@ -24,43 +27,87 @@ weights:
 sites:
   aliexpress:
     label: AliExpress
+    countries: [China]
     suits: [retail, small_batch]
     search: "https://www.aliexpress.com/w/wholesale-{en_dash}.html"
     base: {protection: 5, shipping: 5, convenience: 5, documents: 1}
     note: "1개부터 구매, 한국 직배송·한국어 지원, 구매자 보호(미배송·불량 환불). 단가는 도매보다 높고 시험성적서는 받기 어려움."
   alibaba:
     label: Alibaba (Ready to Ship)
+    countries: [China]
     suits: [retail, small_batch, oem]
     search: "https://www.alibaba.com/trade/search?SearchText={en}"
     base: {protection: 5, shipping: 4, convenience: 4, documents: 5}
     note: "Trade Assurance 결제 보호, 판매자와 직접 채팅으로 시험성적서·인보이스 요청 쉬움. Ready to Ship 상품은 소량 가능."
   "1688":
     label: "1688"
+    countries: [China]
     suits: [retail, small_batch, oem]
     search: "https://s.1688.com/selloffer/offer_search.htm?keywords={zh_gbk}"
     base: {protection: 1, shipping: 1, convenience: 1, documents: 3}
     note: "중국 내수 도매가로 가장 저렴. 해외 결제·배송이 안 되는 경우가 많아 구매대행·배송대행 필요, 분쟁 시 보호 약함."
   taobao:
     label: Taobao·Tmall
+    countries: [China]
     suits: [retail]
     search: "https://s.taobao.com/search?q={zh}"
     base: {protection: 3, shipping: 2, convenience: 3, documents: 1}
     note: "소매 상품이 가장 다양. 해외 직배송은 일부만 되고 보통 배송대행 필요. Tmall 은 브랜드 공식 스토어 위주."
   dhgate:
     label: DHgate
+    countries: [China]
     suits: [retail, small_batch]
     search: "https://www.dhgate.com/wholesale/search.do?searchkey={en}"
     base: {protection: 3, shipping: 4, convenience: 4, documents: 1}
     note: "소량 도매·해외 직배송. 가품·브랜드 도용 상품이 많아 상품 선별 주의."
   made_in_china:
     label: Made-in-China
+    countries: [China]
     suits: [small_batch, oem]
     search: "https://www.made-in-china.com/multi-search/{en}/F1/1.html"
     base: {protection: 3, shipping: 3, convenience: 3, documents: 5}
     note: "제조사 비중이 높아 OEM·서류 요청에 유리. 소량 구매는 판매자 협의 필요."
   globalsources:
     label: Global Sources
+    countries: [China]
     suits: [oem]
     search: "https://www.globalsources.com/searchList/products?keyWord={en}"
     base: {protection: 3, shipping: 3, convenience: 3, documents: 5}
     note: "검증된 수출 제조사 위주(전자·생활용품 강함). MOQ 가 커서 소량 구매엔 부적합."
+
+  # ---------------- 일본 ----------------
+  rakuten:
+    label: 라쿠텐 (楽天市場)
+    countries: [Japan]
+    suits: [retail, small_batch]
+    search: "https://search.rakuten.co.jp/search/mall/{ja}/"
+    base: {protection: 4, shipping: 2, convenience: 3, documents: 2}
+    note: "일본 최대 쇼핑몰, 정품 판매점·브랜드 공식점이 많음. 대부분 해외 배송이 안 돼 배대지 필요, 일본어 결제·문의."
+  amazon_jp:
+    label: Amazon.co.jp
+    countries: [Japan]
+    suits: [retail, small_batch]
+    search: "https://www.amazon.co.jp/s?k={ja}"
+    base: {protection: 5, shipping: 3, convenience: 4, documents: 2}
+    note: "A-to-z 보증으로 구매자 보호가 강하고 일부 상품은 한국 직배송. 마켓플레이스 판매자 상품은 해외 배송 불가가 많음."
+  yahoo_jp:
+    label: Yahoo!ショッピング
+    countries: [Japan]
+    suits: [retail]
+    search: "https://shopping.yahoo.co.jp/search?p={ja}"
+    base: {protection: 3, shipping: 1, convenience: 2, documents: 1}
+    note: "포인트 할인으로 라쿠텐보다 싼 경우가 있음. 해외 배송·해외 카드 결제가 거의 안 돼 배대지·구매대행 필요."
+  netsea:
+    label: NETSEA (일본 도매)
+    countries: [Japan]
+    suits: [small_batch, oem]
+    search: "https://www.netsea.jp/search/?keyword={ja}"
+    base: {protection: 3, shipping: 1, convenience: 2, documents: 3}
+    note: "일본 최대급 B2B 도매몰, 소량 도매가 많음. 도매가는 사입 회원 가입 후 표시되고, 일본 사업자만 거래하는 판매자가 많아 해외 바이어 구매 가능 여부 확인 필요."
+  superdelivery:
+    label: SUPER DELIVERY (일본 도매)
+    countries: [Japan]
+    suits: [small_batch, oem]
+    search: "https://www.superdelivery.com/en/do/psl/?word={ja}"   # 해외 바이어용 영문 사이트
+    base: {protection: 4, shipping: 3, convenience: 3, documents: 3}
+    note: "일본 제조사·도매상 B2B 몰. 해외 바이어용 영문 사이트(수입용 도매가)가 있음. 판매자마다 해외 거래 허용 여부가 다름."

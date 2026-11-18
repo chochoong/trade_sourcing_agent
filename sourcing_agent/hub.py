@@ -54,7 +54,14 @@ def pending_products(conn, ids=None):
     return ok
 
 
-def build_request(conn, p, sourcing_type="small_batch", max_order_qty=None):
+# 공급 국가별 추가 지시 (조사 조건 notes 에 덧붙임)
+COUNTRY_NOTES = {
+    "Japan": "- 공급 국가: 일본. 검색은 품목명을 일본어로 번역한 검색어로 하고, 가격은 엔화 원문과 USD 환산을 함께 적을 것. "
+             "해외(한국) 구매자 거래·해외 배송 가능 여부(안 되면 배송대행지 필요)를 확인할 것.",
+}
+
+
+def build_request(conn, p, sourcing_type="small_batch", max_order_qty=None, country="China"):
     """DB 품목 → 소싱 조건 dict (YAML 요청 파일과 같은 형식)."""
     s = conn.execute("SELECT est_fob_usd FROM product_scores WHERE product_id = ? ORDER BY id DESC LIMIT 1",
                      (p["id"],)).fetchone()
@@ -67,6 +74,8 @@ def build_request(conn, p, sourcing_type="small_batch", max_order_qty=None):
     notes = [f"- {label}: {p[k]}" for k, label in
              (("reason", "선정 이유"), ("regulations", "예상 인증·규제 (판매자가 시험성적서를 줄 수 있는지 확인)"),
               ("risk", "위험 요소"), ("notes", "메모")) if p[k]]
+    if COUNTRY_NOTES.get(country):
+        notes.append(COUNTRY_NOTES[country])
     req = {
         "mode": "supplier",
         "sourcing_type": sourcing_type,
@@ -75,7 +84,7 @@ def build_request(conn, p, sourcing_type="small_batch", max_order_qty=None):
         "hs_code": p["hs_code"],
         "target_price": " / ".join(price) or None,
         "required_certs": [],          # 인증 확정은 5번(통관·규제) 단계 — 여기서는 notes로만 전달
-        "preferred_countries": ["China"],
+        "preferred_countries": [country],
         "prefer_manufacturer": sourcing_type == "oem",
         "notes": "\n".join(notes) or None,
         "min_candidates": 15,
@@ -186,7 +195,7 @@ def export_to_buyagent(run_dir, log=log_stderr):
 
 
 def run_from_db(ids=None, sourcing_type="small_batch", max_order_qty=None, dry_run=False, log=log_stderr,
-                to_buyagent=True):
+                to_buyagent=True, country="China"):
     """to_buyagent: retail 조사면 끝난 뒤 결과를 구매대행 모니터(buyagent) 카탈로그에 자동 추가."""
     load_rubric(sourcing_type)  # 없는 구매 방식이면 DB를 열기 전에 바로 오류
     if max_order_qty is None:
@@ -197,12 +206,12 @@ def run_from_db(ids=None, sourcing_type="small_batch", max_order_qty=None, dry_r
     if not products:
         log("처리할 품목이 없습니다 (`trade_hub select <번호>`로 넘긴 품목 중 아직 조사하지 않은 것).")
         return {"processed": []}
-    requests = [(p, build_request(conn, p, sourcing_type, max_order_qty)) for p in products]
+    requests = [(p, build_request(conn, p, sourcing_type, max_order_qty, country)) for p in products]
     if dry_run:
         return {"dry_run": [r for _, r in requests]}
 
     done = []
-    args = {"ids": ids, "sourcing_type": sourcing_type, "max_order_qty": max_order_qty}
+    args = {"ids": ids, "sourcing_type": sourcing_type, "max_order_qty": max_order_qty, "country": country}
     with db.agent_run(conn, AGENT, provider="anthropic", model=LLM().model, args=args) as run:
         for p, req in requests:
             log(f"\n▶ [{p['id']}] {p['name']} 공급처 조사")

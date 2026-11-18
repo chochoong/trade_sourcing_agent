@@ -25,8 +25,20 @@ def load_channels() -> dict:
     return cfg
 
 
-def sites_for(cfg: dict, sourcing_type: str) -> dict:
-    return {k: s for k, s in cfg["sites"].items() if sourcing_type in (s.get("suits") or [])}
+COUNTRY_ALIASES = {"china": "China", "중국": "China", "cn": "China",
+                   "japan": "Japan", "일본": "Japan", "jp": "Japan"}
+
+
+def request_country(request: dict) -> str:
+    """조사 조건의 첫 선호 국가 (없으면 China)."""
+    c = request.get("preferred_countries") or ["China"]
+    c = c[0] if isinstance(c, list) and c else c
+    return COUNTRY_ALIASES.get(str(c or "").strip().lower(), str(c or "China"))
+
+
+def sites_for(cfg: dict, sourcing_type: str, country: str = "China") -> dict:
+    return {k: s for k, s in cfg["sites"].items()
+            if sourcing_type in (s.get("suits") or []) and country in (s.get("countries") or ["China"])}
 
 
 def _short_keyword(text: str) -> str:
@@ -35,8 +47,9 @@ def _short_keyword(text: str) -> str:
     return " ".join(words[:5])
 
 
-def search_url(template: str, en: str, zh: str | None) -> str:
+def search_url(template: str, en: str, zh: str | None, ja: str | None = None) -> str:
     zh = zh or en
+    ja = ja or en
     try:
         zh_gbk = quote(zh.encode("gbk"))
     except UnicodeEncodeError:
@@ -46,6 +59,7 @@ def search_url(template: str, en: str, zh: str | None) -> str:
         en_dash=quote("-".join(en.lower().split()), safe="-"),
         zh=quote(zh),
         zh_gbk=zh_gbk,
+        ja=quote(ja),
     )
 
 
@@ -74,15 +88,16 @@ def build_channels(cfg: dict, request: dict, assessment: dict | None) -> list[di
     found = {str(s.get("key")): s for s in assessment.get("sites") or [] if isinstance(s, dict)}
     en = _short_keyword(assessment.get("keyword_en") or request.get("product_en") or request.get("product"))
     zh = assessment.get("keyword_zh") or request.get("product_zh")
+    ja = assessment.get("keyword_ja") or request.get("product_ja")
 
     out = []
-    for key, site in sites_for(cfg, stype).items():
+    for key, site in sites_for(cfg, stype, request_country(request)).items():
         a = found.get(key, {})
         total, parts = score_site(site, a, weights)
         evidence = [{"claim": e.get("claim"), "url": e.get("url")} for e in a.get("evidence") or [] if isinstance(e, dict)]
         out.append({
             "key": key, "site": site.get("label", key),
-            "search_url": search_url(site["search"], en, zh),
+            "search_url": search_url(site["search"], en, zh, ja),
             "total": total, "scores": parts,
             "typical_price": a.get("typical_price"), "min_qty": a.get("min_qty"),
             "summary": a.get("summary") or ("평가 못 함 (사이트 고유 점수만 반영)" if not a else ""),
@@ -98,7 +113,7 @@ def assess_channels(llm, request: dict, log=None) -> list[dict]:
     """웹 검색으로 사이트별 품목 평가 → 점수순 목록. 평가가 실패해도 고유 점수·링크는 돌려줌."""
     cfg = load_channels()
     stype = request.get("sourcing_type") or "oem"
-    sites = sites_for(cfg, stype)
+    sites = sites_for(cfg, stype, request_country(request))
     if not sites:
         return []
     system = (PROMPTS / "channels.md").read_text(encoding="utf-8")

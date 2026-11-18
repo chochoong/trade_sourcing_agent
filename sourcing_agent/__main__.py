@@ -51,6 +51,8 @@ def main() -> int:
     s.add_argument("--max-qty", type=int, dest="max_order_qty",
                    help="첫 구매 최대 수량 (1차 필터에 사용, 기본: small_batch 50 / retail 10 / oem 제한 없음)")
     s.add_argument("--dry-run", action="store_true", help="DB에서 만든 소싱 조건만 출력 (API 호출 없음)")
+    s.add_argument("--country", default="China", choices=["China", "Japan"],
+                   help="공급 국가 (기본 China). Japan 이면 일본어 검색·일본 구매 사이트·일본 기업정보로 조사")
     s.add_argument("--no-buyagent", action="store_true", help="retail 조사 후 buyagent 로 자동 내보내기 하지 않음")
     a = p.parse_args()
 
@@ -61,7 +63,7 @@ def main() -> int:
 
         if a.cmd == "from-db":
             from .hub import run_from_db   # trade_hub 패키지가 필요한 명령만 늦게 불러옴
-            out = run_from_db(a.ids, a.sourcing_type, a.max_order_qty, a.dry_run, to_buyagent=not a.no_buyagent)
+            out = run_from_db(a.ids, a.sourcing_type, a.max_order_qty, a.dry_run, to_buyagent=not a.no_buyagent, country=a.country)
         elif a.cmd == "export-buyagent":
             from .buyagent_export import export
             out = export(a.run_dir, a.category, a.buyagent, a.write, a.allow_non_retail, a.min_score)
