@@ -42,6 +42,8 @@ def main() -> int:
     s.add_argument("--write", action="store_true", help="실제로 파일에 쓰기 (없으면 추가·갱신 미리보기만)")
     s.add_argument("--allow-non-retail", action="store_true",
                    help="retail 이 아닌 조사 결과도 내보내기 (도매가 → memo 에 '소량 사입 결과(도매가)' 표시)")
+    s.add_argument("--min-score", type=float,
+                   help="이 점수 미만 판매처는 제외 (기본 25, 환경변수 BUYAGENT_MIN_SCORE)")
     s = sub.add_parser("from-db", help="공용 DB에서 sourcing 단계 품목을 읽어 처리하고 결과를 DB에 기록")
     s.add_argument("ids", nargs="*", type=int, help="품목 번호 (생략하면 아직 조사하지 않은 sourcing 품목 전부)")
     s.add_argument("--type", default="small_batch", dest="sourcing_type",
@@ -62,7 +64,7 @@ def main() -> int:
             out = run_from_db(a.ids, a.sourcing_type, a.max_order_qty, a.dry_run, to_buyagent=not a.no_buyagent)
         elif a.cmd == "export-buyagent":
             from .buyagent_export import export
-            out = export(a.run_dir, a.category, a.buyagent, a.write, a.allow_non_retail)
+            out = export(a.run_dir, a.category, a.buyagent, a.write, a.allow_non_retail, a.min_score)
             if not a.write:
                 log_stderr("미리보기입니다. 파일에 추가하려면 --write 를 붙이세요.")
         elif a.cmd == "channels":

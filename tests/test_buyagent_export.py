@@ -139,6 +139,22 @@ class ExportTest(unittest.TestCase):
         self.assertEqual(r["product"], "none")
         self.assertEqual(len(self.rows("products.csv")), 1)
 
+    def test_counterfeit_and_low_score_excluded(self):
+        self.write_results("retail", [
+            supplier("F", "https://www.aliexpress.com/item/5.html", 11,
+                     risk_flags=["Lenovo 브랜드명을 씀. 상표 도용·가품 가능성이 높음"]),
+            supplier("L", "https://www.aliexpress.com/item/6.html", 12, total=13),
+            supplier("OK", "https://www.aliexpress.com/item/7.html", 30,
+                     risk_flags=["메타 모방 디자인이면 상표권 침해 소지"]),   # 조건부 경고는 통과
+        ])
+        r = export(self.run, buyagent_dir=self.ba)
+        self.assertEqual([x["shop"] for x in r["added"]], ["OK"])
+        reasons = {s["name"]: s["reason"] for s in r["skipped"]}
+        self.assertIn("가품", reasons["F"])
+        self.assertIn("기준 25점", reasons["L"])
+        r = export(self.run, buyagent_dir=self.ba, min_score=10)
+        self.assertEqual(sorted(x["shop"] for x in r["added"]), ["L", "OK"])
+
     def test_banned_category(self):
         self.write_results("retail", SUPPLIERS, product_en="bluetooth speaker", product="블루투스 스피커")
         with self.assertRaisesRegex(ValueError, "금지"):

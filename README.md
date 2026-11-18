@@ -115,6 +115,8 @@ cd ../buyagent/buyagent && python main.py --only <product_id>         # 원가·
 - **retail(구매대행) 조사 결과만** 넘깁니다. 소량 사입·OEM 결과는 도매가라 거절합니다
   (꼭 필요하면 `--allow-non-retail`, 이때 memo 에 "소량 사입 결과(도매가)" 표시).
 - 판매처는 **낱개 구매가 되는 곳만** (MOQ 첫 숫자가 2 이상이면 제외), 상품 상세 페이지와 USD 단가가 있어야 합니다.
+- **가품·상표 도용 위험이 지적된 판매처**(검증 risk_flags 에 '도용·가품·위조' 등)와 **25점 미만** 판매처는 제외합니다.
+  buyagent 는 가장 싼 판매처를 고르므로, 싸고 위험한 곳이 1순위가 되는 것을 막기 위함입니다 (`--min-score`, 환경변수 `BUYAGENT_MIN_SCORE`).
 - `products.csv` 에 품목 1줄(`sources=manual`, `hub_product_id` = 공용 DB 품목 번호), `manual_prices.csv` 에 판매처마다 1줄.
   buyagent 에 `hub_product_id` 열이 없으면 기존 열만 쓰고 경고합니다.
 - 같은 (품목 id, 링크) 가 이미 있으면 가격·배송비·재고·확인 날짜·memo 를 새 값으로 **갱신**합니다 (줄은 늘지 않음).

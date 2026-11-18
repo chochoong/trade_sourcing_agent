@@ -10,6 +10,8 @@ buyagent 에 필요한 건 '어느 상품 페이지에서 낱개를 얼마에 �
   (꼭 필요하면 allow_non_retail=True, 이때 memo 에 '소량 사입 결과(도매가)' 표시).
 - 같은 (id, url) 이 이미 있으면 가격·배송비·재고·확인 날짜·memo 를 새 값으로 갱신 (줄은 늘리지 않음).
   단, 이 모듈이 넣은 줄(memo 에 MARKER)만 갱신하고 사람이 손으로 쓴 줄은 건드리지 않습니다.
+- 가품·상표 도용 위험이 지적된 판매처와 점수가 너무 낮은 판매처(기본 25점 미만)는 넘기지 않습니다.
+  buyagent 는 판매처 중 가장 싼 곳을 고르기 때문에, 싸고 위험한 곳이 1순위가 되는 것을 막기 위함.
 - 현지 배송비는 모르면 빈 칸 (buyagent 가 '미확인'으로 처리). 무료배송이 확실할 때만 0.
 - 기본은 미리보기만 하고, write=True 일 때만 파일을 씁니다.
 """
@@ -33,6 +35,12 @@ PRODUCT_COLS = ["id", "name", "category", "keyword", "jan", "must_include", "exc
                 "hub_product_id"]
 PRICE_COLS = ["id", "price", "currency", "origin", "shipping", "in_stock", "shop", "url", "checked", "memo"]
 UPDATE_COLS = ["price", "shipping", "in_stock", "checked", "memo"]   # 다시 내보낼 때 바꾸는 칸
+
+# 이 점수 미만 판매처는 넘기지 않음 (환경변수 BUYAGENT_MIN_SCORE 또는 --min-score 로 변경)
+DEFAULT_MIN_SCORE = float(os.getenv("BUYAGENT_MIN_SCORE", "25"))
+# 검증 단계 risk_flags 에 이런 표현이 있으면 가품 위험으로 보고 제외.
+# '상표'만으로는 걸지 않음 ("모방 디자인이면 상표권 침해 소지" 같은 조건부 경고까지 걸리므로)
+_COUNTERFEIT = re.compile(r"도용|가품|위조|짝퉁|counterfeit|fake|replica", re.I)
 
 # buyagent settings.toml 의 [origins.*] 에 있는 나라만 (없는 나라는 면세 한도·배대지 요금을 모름)
 ORIGINS = {"china": "CN", "중국": "CN", "cn": "CN", "japan": "JP", "일본": "JP", "jp": "JP",
@@ -116,7 +124,13 @@ def is_ours(row: dict) -> bool:
     return MARKER in memo or bool(_LEGACY_MEMO.match(memo))
 
 
-def build_rows(payload: dict, category: str, run_name: str = "", wholesale: bool = False):
+def counterfeit_flag(s: dict):
+    """가품·상표 도용 위험을 지적한 risk_flag 문장 (없으면 None)."""
+    return next((str(x) for x in s.get("risk_flags") or [] if _COUNTERFEIT.search(str(x))), None)
+
+
+def build_rows(payload: dict, category: str, run_name: str = "", wholesale: bool = False,
+               min_score: float = DEFAULT_MIN_SCORE):
     """results.json → (products 1줄, manual_prices 여러 줄, 건너뛴 업체와 사유)."""
     req = payload.get("request") or {}
     pid = product_id(req)
@@ -136,7 +150,11 @@ def build_rows(payload: dict, category: str, run_name: str = "", wholesale: bool
         price = s.get("unit_price_usd") or parse_usd_price(s.get("price_range"))
         origin = _origin(s.get("country"))
         moq = first_qty(s.get("moq"))
-        why = ("상품 상세 페이지 없음" if not url
+        fake = counterfeit_flag(s)
+        total = s.get("total") or 0
+        why = (f"가품·상표 도용 위험: {fake[:80]}" if fake
+               else f"점수 {total:g}점 < 기준 {min_score:g}점" if total < min_score
+               else "상품 상세 페이지 없음" if not url
                else "USD 단가 없음" if not price
                else f"buyagent 에 없는 나라({s.get('country')})" if not origin
                else f"MOQ {moq}개 → 낱개 구매 불가 (구매대행은 1개씩 삼)" if moq and moq > 1 and not wholesale
@@ -174,7 +192,7 @@ def _save(path: Path, header: list[str], rows: list[dict], bom: bool) -> None:
 
 
 def export(run_dir, category: str | None = None, buyagent_dir=None, write: bool = False,
-           allow_non_retail: bool = False) -> dict:
+           allow_non_retail: bool = False, min_score: float | None = None) -> dict:
     """category 를 생략하면 품목명으로 추정. 넘길 수 없는 경우(retail 아님, 카테고리 미정 등)는 ValueError."""
     run_dir = Path(run_dir)
     payload = json.loads((run_dir / "results.json").read_text(encoding="utf-8"))
@@ -192,7 +210,8 @@ def export(run_dir, category: str | None = None, buyagent_dir=None, write: bool 
     if not products_csv.exists():
         raise FileNotFoundError(f"buyagent 카탈로그를 찾지 못했습니다: {products_csv} (--buyagent 로 경로 지정)")
 
-    product, prices, skipped = build_rows(payload, category, run_dir.name, wholesale)
+    min_score = DEFAULT_MIN_SCORE if min_score is None else min_score
+    product, prices, skipped = build_rows(payload, category, run_dir.name, wholesale, min_score)
     warnings = []
     p_header, p_rows, p_bom = _load(products_csv)
     q_header, q_rows, q_bom = _load(prices_csv)
