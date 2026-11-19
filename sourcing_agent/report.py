@@ -46,14 +46,14 @@ def _contact_line(c: dict) -> str:
 
 
 def build_payload(results: list[dict], request: dict, channels: list[dict] | None = None) -> dict:
-    """다음 단계(협상·계약) 에이전트에 넘길 고정 형식."""
+    """다음 단계(3 통관·규제 → 4 원가·수익 → 5 협상) 에이전트에 넘길 고정 형식."""
     return {
         "schema_version": SCHEMA_VERSION,
         "agent": "trade_sourcing_agent",
         "mode": request.get("mode", "supplier"),
         "sourcing_type": request.get("sourcing_type", "oem"),
         "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
-        "request": request,  # 품목, hs_code, 목표 단가 등 — 통관·물류 단계까지 그대로 전달
+        "request": request,  # 품목, hs_code, 목표 단가 등 — 3번 통관·규제 체크 이후 단계까지 그대로 전달
         "suppliers": [{"rank": i, **r} for i, r in enumerate(results, 1)],
         # 구매 사이트 순위 (1.x 추가 필드): [{rank, key, site, search_url, total, scores, typical_price, ...}]
         "channels": channels or [],

@@ -2,7 +2,8 @@
 
 1인 무역용 공급처 발굴 에이전트입니다. 품목 조건을 넣으면 후보 업체를 찾고 신뢰도를 검증해서, 점수순 비교표와 추천 리포트를 만들어 줍니다.
 
-1인 무역 파이프라인(소싱 → 협상·계약 → 통관·물류 → 판매·마케팅 → 정산·회계) 중 **2단계: 공급처 발굴**을 맡습니다.
+1인 수입 무역 파이프라인(1 시장조사 → **2 공급처 발굴** (2-R 구매대행) → 3 통관·규제 체크 → 4 원가·수익 계산 → 5 커뮤니케이션·협상 → 6 무역서류 → 7 판매 → 8 재무) 중 **2단계: 공급처 발굴**을 맡습니다.
+구매대행(retail) 조사 결과는 2-R 구매대행 모니터(buyagent)로 넘깁니다.
 현재는 수입용 공급처 발굴(`mode: supplier`)만 지원하고, 수출용 바이어 발굴(`mode: buyer`)은 추후 추가 예정입니다.
 
 ## 동작 방식 (하이브리드)
@@ -81,7 +82,7 @@ python -m sourcing_agent from-db 17 --type oem --max-qty 100   # 특정 품목�
 - `--type retail` 이면 조사가 끝난 뒤 결과를 구매대행 모니터(buyagent)에 자동으로 추가합니다 (아래 "구매대행으로 팔기", 끄려면 `--no-buyagent`).
 
 - 소싱 조건은 DB의 품목명·영어 검색어·FOB/판매가 시세·선정 이유·예상 규제·위험 요소로 채웁니다.
-  인증 확정은 5번(통관·규제) 단계 일이라 `required_certs`는 비우고 메모로만 전달합니다.
+  인증 확정은 3번(통관·규제 체크) 단계 일이라 `required_certs`는 비우고 메모로만 전달합니다.
 - 결과는 `output/` 리포트와 함께 공용 DB의 `suppliers`·`product_suppliers`(상위 3곳 추천 표시, 구매 방식 `purchase_mode`)와
   `product_channels`(구매 사이트 순위)에 기록되고,
   `tasks`에 "공급처 검토" 할 일이 생깁니다. 품목 단계(stage)는 바꾸지 않습니다.
@@ -210,7 +211,7 @@ python -m sourcing_agent run requests/example.yaml > out.json
 }
 ```
 
-모르는 값은 `null` 입니다. 협상 단계는 `contacts` + `first_questions`, 통관 단계는 `request.hs_code` 를 쓰면 됩니다.
+모르는 값은 `null` 입니다. 3번 통관·규제 체크는 `request.hs_code`, 4번 원가·수익 계산은 `unit_price_usd`, 5번 협상은 `contacts` + `first_questions` 를 쓰면 됩니다.
 
 ## 커스터마이즈
 
