@@ -39,13 +39,13 @@ cp .env.example .env              # Windows: copy .env.example .env
 1. 요청 파일을 복사해서 품목 조건을 채웁니다.
    - 소매 직구(낱개~10개, 시장 반응 보기): `sourcing_type: retail` + `max_order_qty: 10`
    - 소량 도매(테스트 판매): `requests/keyboard_small_batch.yaml` (`sourcing_type: small_batch`, `max_order_qty`)
-   - OEM 공장 소싱: `requests/example.yaml` (`sourcing_type` 생략 시 `oem`)
+   - 대량 사입·OEM(공장·대형 도매 직거래): `requests/example.yaml` (`sourcing_type` 생략 시 `oem`)
 
    | 구매 방식 | 언제 | 주로 찾는 곳 | 점수 중점 |
    |---|---|---|---|
    | `retail` | 몇 개만 사서 반응 보기 | AliExpress·Taobao·Tmall 스토어 | 판매자 평판, 상품 후기, 한국 배송, 정품 여부 |
    | `small_batch` | 50개 이하 테스트 판매 | Alibaba Ready to Ship, 1688, AliExpress 도매 | 소량 구매 가능, 평판, 시험성적서 |
-   | `oem` | 판매가 검증된 뒤 자체 제작 | 제조 공장 | 업력, 제조사 여부, 인증, 실적 |
+   | `oem` (대량 사입·OEM) | 판매가 검증된 뒤 대량 구매(기성품) 또는 맞춤 제작 | 제조 공장, 대형 도매 | 제조사 여부, 인증, MOQ·수량 구간 단가, 실적 (OEM 대응은 가점) |
 
 2-A. **한 번에 실행** (수동 정보 없이)
 ```bash
@@ -217,7 +217,7 @@ python -m sourcing_agent run requests/example.yaml > out.json
 
 | 바꾸고 싶은 것 | 파일 |
 |---|---|
-| 구매 방식 선택 | 요청 YAML 의 `sourcing_type` (`retail` 소매 직구 / `small_batch` 소량 도매 / `oem` 공장 맞춤 제작, 기본 `oem`) |
+| 구매 방식 선택 | 요청 YAML 의 `sourcing_type` (`retail` 소매 직구 / `small_batch` 소량 도매 / `oem` 대량 사입·OEM, 기본 `oem`) |
 | 점수 기준, 가중치, 등급, 방식별 검색·검증 방향 | `config/scoring/<sourcing_type>.yaml` |
 | 구매 사이트 목록·검색 링크·사이트 고유 점수·방식별 가중치 | `config/channels.yaml` (평가 지시문: `prompts/channels.md`) |
 | 검색 전략, 수집 항목 | `prompts/discover.md` |

@@ -41,7 +41,7 @@ def validate_request(request: dict) -> dict:
     if mode not in SUPPORTED_MODES:
         raise NotImplementedError(
             f"mode={mode!r} 는 아직 지원하지 않습니다. 지원: {', '.join(SUPPORTED_MODES)}")
-    # 구매 방식: oem(공장 맞춤 제작) / small_batch(소량 도매) — config/scoring/<값>.yaml 점수표 사용
+    # 구매 방식: oem(대량 사입·OEM) / small_batch(소량 도매) / retail(구매대행) — config/scoring/<값>.yaml 점수표 사용
     sourcing_type = request.get("sourcing_type") or DEFAULT_SOURCING_TYPE
     load_rubric(sourcing_type)  # 점수표가 없으면 여기서 바로 오류
     return {**request, "mode": mode, "sourcing_type": sourcing_type}
