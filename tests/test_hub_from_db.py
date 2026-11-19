@@ -18,6 +18,10 @@ CHANNELS = [{"rank": 1, "key": "aliexpress", "site": "AliExpress", "search_url":
              "evidence": [], "assessed": False}]
 
 
+SPECS = {"flags": {"power_source": "battery_lithium", "wireless": True, "food_contact": None},
+         "materials": ["TR90"], "evidence": [{"claim": "리튬 배터리", "url": "https://www.aliexpress.com/item/1.html"}]}
+
+
 class FromDbTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)  # from-db 연결이 열려 있어도 정리
@@ -37,7 +41,8 @@ class FromDbTest(unittest.TestCase):
         run_dir.mkdir(exist_ok=True)
         payload = {"sourcing_type": stype, "request": {"max_order_qty": 10, "trade_hub_product_id": self.pid},
                    "suppliers": [{"name": "A", "country": "China", "moq": "1 piece", "total": 70, "grade": "B",
-                                  "urls": ["https://www.aliexpress.com/item/1.html"], "unit_price_usd": 20}],
+                                  "urls": ["https://www.aliexpress.com/item/1.html"], "unit_price_usd": 20,
+                                  "specs": SPECS}],
                    "channels": CHANNELS}
         (run_dir / "results.json").write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
         return {"run_dir": str(run_dir), "files": {"json": str(run_dir / "results.json"),
@@ -57,6 +62,8 @@ class FromDbTest(unittest.TestCase):
         conn = db.connect()
         link = conn.execute("SELECT purchase_mode, max_order_qty FROM product_suppliers").fetchone()
         self.assertEqual((link["purchase_mode"], link["max_order_qty"]), ("retail", 10))
+        specs = conn.execute("SELECT specs_json FROM product_suppliers").fetchone()["specs_json"]
+        self.assertEqual(json.loads(specs), SPECS)                # 3번 통관·규제 체크가 읽을 제품 사양
         ch = db.latest_channels(conn, self.pid, "retail")
         self.assertEqual([c["site"] for c in ch], ["AliExpress", "1688"])
         self.assertEqual(ch[0]["typical_price"], "USD 12-18")     # 상위 3 요약본이 아니라 전체 channels

@@ -205,13 +205,17 @@ python -m sourcing_agent run requests/example.yaml > out.json
       "trade_terms": { "lead_time", "payment_terms", "sample", "export_markets" },
       "scores": { ... }, "risk_penalty": 0, "total": 72.0, "grade": "B",
       "risk_flags": [], "unverified": [], "evidence": [{ "claim", "url" }],
-      "summary": "...", "first_questions": ["..."], "manual_info_used": false
+      "summary": "...", "first_questions": ["..."], "manual_info_used": false,
+      "specs": {                     // 제품 사양 (1.1~, 상품 페이지에서 확인한 사실만, 모르면 null). 공용 DB product_suppliers.specs_json
+        "flags": {"power_source": "battery_lithium", "is_electronic": true, "wireless": true, "food_contact": null, "...": null},
+        "materials": ["ABS"], "evidence": [{"claim": "리튬 배터리 내장", "url": "https://..."}]
+      }
     }
   ]
 }
 ```
 
-모르는 값은 `null` 입니다. 3번 통관·규제 체크는 `request.hs_code`, 4번 원가·수익 계산은 `unit_price_usd`, 5번 협상은 `contacts` + `first_questions` 를 쓰면 됩니다.
+모르는 값은 `null` 입니다. 3번 통관·규제 체크는 `request.hs_code` + `specs`, 4번 원가·수익 계산은 `unit_price_usd`, 5번 협상은 `contacts` + `first_questions` 를 쓰면 됩니다.
 
 ## 커스터마이즈
 

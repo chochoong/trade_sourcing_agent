@@ -9,6 +9,7 @@ from .manual import read_manual
 from .normalize import order_urls, parse_usd_price
 from .paths import PROMPTS
 from .scoring import compute, rubric_text
+from .specs import normalize_specs
 
 # 업체를 바꿔도 똑같이 실패할 오류 → 전체 실행을 즉시 중단
 # (API 키 오류, 권한 없음, 잘못된 모델명/툴 버전 등)
@@ -99,4 +100,5 @@ def verify_one(llm, candidate: dict, request: dict, rubric: dict) -> dict:
         "summary": str(v.get("summary") or ""),
         "first_questions": [str(x) for x in _as_list(v.get("first_questions"))],
         "manual_info_used": bool(manual),
+        "specs": normalize_specs(v.get("specs")),   # 제품 사양 (3번 통관·규제 체크용). 모르면 None
     }

@@ -7,7 +7,7 @@ from pathlib import Path
 
 # results.json 형식이 바뀌면 올립니다. 다음 단계 에이전트는 이 값을 확인하고 읽으세요.
 #   1.x: 필드 추가만 (하위 호환)   2.0: 필드 삭제/의미 변경
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"   # 1.1: suppliers[].specs (제품 사양, 모르면 null)
 
 
 def _j(v):
