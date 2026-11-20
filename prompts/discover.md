@@ -7,7 +7,13 @@
   notes 에서 제외하라고 한 플랫폼·상품은 검색하지도, 후보에 넣지도 마세요.
 - `site:` 검색 연산자와 현지어 검색어를 적극 활용하세요.
   (예: 중국 공산품 → `site:alibaba.com`, `site:made-in-china.com`, `site:1688.com`(중문) /
-  일본 → 일본어 검색어, `site:netsea.jp`, `site:superdelivery.com` 등 조건에 맞는 곳)
+  일본 → 일본어 검색어, `site:netsea.jp`, `site:superdelivery.com` /
+  미국 → 영문 검색어, `site:ebay.com`, `site:amazon.com`, `site:thomasnet.com` 등 조건에 맞는 곳)
+- 소싱 조건에 `reference_urls`(시장조사 단계에서 본 대표 상품 페이지)가 있으면:
+  - 먼저 그 페이지를 확인해 **같은 물건**(형태·핵심 기능·사양)을 기준으로 찾으세요. 이름만 비슷한 다른 물건은 후보에 넣지 마세요.
+  - 그 페이지가 구매처(알리바바·1688·AliExpress·라쿠텐·eBay 등)의 상품 상세 페이지면 그 판매자를 후보에 반드시 넣고
+    notes 에 "시장조사 참고 상품"이라고 적으세요. (검증은 다른 후보와 똑같이 받습니다)
+  - 국내 쇼핑몰·기사·리뷰 페이지면 사양 확인용으로만 쓰고 후보에는 넣지 마세요.
 - 같은 업체가 여러 플랫폼에 있으면 하나로 합치고 urls 에 모두 넣으세요.
 - urls 에는 **그 업체만의 고유 페이지**만 넣으세요: 스토어 홈(`xxx.en.alibaba.com`), 상품 상세(`alibaba.com/product-detail/...`,
   `aliexpress.com/item/...`, `detail.1688.com/offer/...`), 회사 소개 페이지 등.

@@ -27,7 +27,8 @@ def load_channels() -> dict:
 
 
 COUNTRY_ALIASES = {"china": "China", "중국": "China", "cn": "China",
-                   "japan": "Japan", "일본": "Japan", "jp": "Japan"}
+                   "japan": "Japan", "일본": "Japan", "jp": "Japan",
+                   "usa": "USA", "us": "USA", "미국": "USA", "united states": "USA"}
 
 
 def request_country(request: dict) -> str:

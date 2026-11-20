@@ -14,6 +14,8 @@ discover_hint: |
   - 일본(preferred_countries 에 Japan)이면: 일본어 검색어로 NETSEA·SUPER DELIVERY 같은 도매몰, 제조사·도매상의
     「卸売」「業務用」「法人向け」 판매 페이지를 찾으세요. 일본 사업자만 거래하는 곳이 많으니
     해외(한국) 바이어 구매·해외 배송 가능 여부를 꼭 확인하고 notes 에 적으세요.
+  - 미국(preferred_countries 에 USA)이면: 영문 검색어로 eBay 의 여러 개 묶음(lot)·도매 판매자, Amazon.com 판매자,
+    미국 도매상·유통사(Thomasnet 등)를 찾으세요. 한국 배송 가능 여부와 수량 할인을 notes 에 적으세요.
 
 # 검증 단계에서 중점적으로 볼 것
 verify_focus: |

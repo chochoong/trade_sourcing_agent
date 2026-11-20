@@ -48,12 +48,13 @@ def main() -> int:
     s = sub.add_parser("from-db", help="공용 DB에서 sourcing 단계 품목을 읽어 처리하고 결과를 DB에 기록")
     s.add_argument("ids", nargs="*", type=int, help="품목 번호 (생략하면 아직 조사하지 않은 sourcing 품목 전부)")
     s.add_argument("--type", default="small_batch", dest="sourcing_type",
-                   help="구매 방식: small_batch(소량 도매, 기본) / retail(소매 직구) / oem")
+                   help="구매 방식: small_batch(소량 도매, 기본) / retail(소매 직구) / oem(대량 사입·OEM)")
     s.add_argument("--max-qty", type=int, dest="max_order_qty",
                    help="첫 구매 최대 수량 (1차 필터에 사용, 기본: small_batch 50 / retail 10 / oem 제한 없음)")
     s.add_argument("--dry-run", action="store_true", help="DB에서 만든 소싱 조건만 출력 (API 호출 없음)")
-    s.add_argument("--country", default="China", choices=["China", "Japan"],
-                   help="공급 국가 (기본 China). Japan 이면 일본어 검색·일본 구매 사이트·일본 기업정보로 조사")
+    s.add_argument("--country", choices=["China", "Japan", "USA"],
+                   help="공급 국가. 생략하면 1번이 품목마다 추천한 국가(DB source_country), 그것도 없으면 China. "
+                        "Japan=일본어 검색·일본 사이트, USA=eBay·Amazon.com·미국 제조사")
     s.add_argument("--no-buyagent", action="store_true", help="retail 조사 후 buyagent 로 자동 내보내기 하지 않음")
     a = p.parse_args()
 

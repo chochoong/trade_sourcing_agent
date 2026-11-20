@@ -7,9 +7,10 @@
   python -m sourcing_agent from-db 16 17        # 지정한 품목만 (이미 조사했어도 다시)
 
 이 에이전트가 쓰는 곳: suppliers, product_suppliers, tasks(검토 요청), product_events(조사 기록).
-단계(stage)는 바꾸지 않는다 — 공급처를 골라 협상으로 넘기는 건 사람/3번 에이전트의 일.
+단계(stage)는 바꾸지 않는다 — 공급처를 골라 다음 단계(3번 통관·규제 체크 → 4번 원가 → 5번 협상)로 넘기는 건 사람/다음 에이전트의 일.
 """
 import json
+import re
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -60,11 +61,41 @@ def pending_products(conn, ids=None):
 COUNTRY_NOTES = {
     "Japan": "- 공급 국가: 일본. 검색은 품목명을 일본어로 번역한 검색어로 하고, 가격은 엔화 원문과 USD 환산을 함께 적을 것. "
              "해외(한국) 구매자 거래·해외 배송 가능 여부(안 되면 배송대행지 필요)를 확인할 것.",
+    "USA": "- 공급 국가: 미국. 검색은 영문 검색어로 eBay·Amazon.com·미국 제조사/도매상(Thomasnet 등)에서 하고, 가격은 USD로 적을 것. "
+           "한국 배송(국제 배송·eBay GSP) 가능 여부(안 되면 배송대행지 필요)와 판매자 피드백 점수·누적 거래를 확인할 것.",
 }
+COUNTRIES = ("China", "Japan", "USA")   # 2번이 조사할 수 있는 공급 국가 (trade_hub products.source_country 값과 같음)
+DEFAULT_COUNTRY = "China"               # 지정도 없고 1번 추천 국가도 없을 때만
 
 
-def build_request(conn, p, sourcing_type="small_batch", max_order_qty=None, country="China"):
-    """DB 품목 → 소싱 조건 dict (YAML 요청 파일과 같은 형식)."""
+def product_field(p, key):
+    """DB 행에서 값 읽기 (예전 스키마라 컬럼이 없으면 None)."""
+    try:
+        return p[key]
+    except (IndexError, KeyError):
+        return None
+
+
+def product_country(p, country=None):
+    """조사할 국가: 명시한 값 > 1번이 추천한 품목의 source_country > China."""
+    if country:
+        return country
+    rec = product_field(p, "source_country")
+    return rec if rec in COUNTRIES else DEFAULT_COUNTRY
+
+
+def reference_url(p):
+    """1번의 참고 상품 페이지(products.ref_url). http(s) 주소만, 없으면 None."""
+    try:
+        url = (p["ref_url"] or "").strip()
+    except (IndexError, KeyError):
+        return None
+    return url if re.match(r"https?://", url) else None
+
+
+def build_request(conn, p, sourcing_type="small_batch", max_order_qty=None, country=None):
+    """DB 품목 → 소싱 조건 dict (YAML 요청 파일과 같은 형식). country 없으면 1번 추천 국가."""
+    country = product_country(p, country)
     s = conn.execute("SELECT est_fob_usd FROM product_scores WHERE product_id = ? ORDER BY id DESC LIMIT 1",
                      (p["id"],)).fetchone()
     fob = s["est_fob_usd"] if s else None
@@ -78,14 +109,21 @@ def build_request(conn, p, sourcing_type="small_batch", max_order_qty=None, coun
               ("risk", "위험 요소"), ("notes", "메모")) if p[k]]
     if COUNTRY_NOTES.get(country):
         notes.append(COUNTRY_NOTES[country])
+    seed = product_field(p, "source_page_url")
+    if seed:   # 1번이 조사 중 본 해외 구매처 상품 상세 페이지 → 이 판매자부터 검증
+        notes.append(f"- 시장조사 단계에서 본 해외 판매 페이지: {seed} — 이 판매자를 첫 후보로 포함해 검증할 것 "
+                     "(조건에 안 맞거나 검증에서 문제가 나오면 그 이유를 적고 다른 후보와 똑같이 평가)")
+    ref = reference_url(p)
     req = {
         "mode": "supplier",
         "sourcing_type": sourcing_type,
         "product": p["name"],
         "product_en": p["search_keyword_en"] or p["name"],
         "hs_code": p["hs_code"],
+        # 1번이 시장조사 중 본 대표 상품 페이지 → 같은 물건(사양)을 찾는 기준. 구매처 상품 페이지면 그 판매자도 후보로
+        "reference_urls": [ref] if ref else None,
         "target_price": " / ".join(price) or None,
-        "required_certs": [],          # 인증 확정은 5번(통관·규제) 단계 — 여기서는 notes로만 전달
+        "required_certs": [],          # 인증 확정은 3번(통관·규제 체크) 단계 — 여기서는 notes로만 전달
         "preferred_countries": [country],
         "prefer_manufacturer": sourcing_type == "oem",
         "notes": "\n".join(notes) or None,
@@ -148,7 +186,7 @@ def save_results(conn, run_id, product_id, suppliers, report_path, purchase_mode
                 red_flags=_text(r.get("risk_flags")))
             link = {"is_top_pick": int(i < TOP_PICKS), "moq": _text(r.get("moq")),
                     "price_note": _text(r.get("price_range")),
-                    # v4: 이 품목 기준 평가 결과 (3번 협상은 first_questions·trade_terms 를 씀)
+                    # v4: 이 품목 기준 평가 결과 (5번 협상은 first_questions·trade_terms 를 씀)
                     "purchase_mode": purchase_mode, "max_order_qty": max_order_qty,
                     "score": r.get("total"), "grade": r.get("grade") if r.get("grade") in TRUST else None,
                     "score_detail_json": r.get("scores") if isinstance(r.get("scores"), dict) else None,
@@ -156,10 +194,13 @@ def save_results(conn, run_id, product_id, suppliers, report_path, purchase_mode
                     "first_questions_json": _list(r.get("first_questions")),
                     "unverified_json": _list(r.get("unverified")),
                     "evidence_json": _list(r.get("evidence"))}
-            # 원가 계산(6번)은 unit_price_usd 가 있는 업체만 처리함 → 문장형 단가에서 USD 숫자를 뽑아 넣음
+            # 원가·수익 계산(4번)은 unit_price_usd 가 있는 업체만 처리함 → 문장형 단가에서 USD 숫자를 뽑아 넣음
             price = r.get("unit_price_usd") or parse_usd_price(r.get("price_range"))
             if price:
                 link["unit_price_usd"] = price
+            # 제품 사양 (trade_hub v13~, 3번 통관·규제 체크가 읽음). 모르면 저장하지 않음 (예전 값 유지)
+            if r.get("specs") and "specs_json" in db.LINK_FIELDS:
+                link["specs_json"] = r["specs"]
             db.link_supplier(conn, product_id, sid, run_id, **link)
         name = conn.execute("SELECT name FROM products WHERE id = ?", (product_id,)).fetchone()["name"]
         n = len(suppliers)
@@ -218,7 +259,7 @@ def _readable_errors():
 
 
 def run_from_db(ids=None, sourcing_type="small_batch", max_order_qty=None, dry_run=False, log=log_stderr,
-                to_buyagent=True, country="China"):
+                to_buyagent=True, country=None):
     """to_buyagent: retail 조사면 끝난 뒤 결과를 구매대행 모니터(buyagent) 카탈로그에 자동 추가."""
     load_rubric(sourcing_type)  # 없는 구매 방식이면 DB를 열기 전에 바로 오류
     if max_order_qty is None:

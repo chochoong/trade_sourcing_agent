@@ -57,6 +57,19 @@ class JapanRequestTest(unittest.TestCase):
         self.assertEqual(r["preferred_countries"], ["China"])
         self.assertNotIn("일본", r.get("notes") or "")
 
+    def test_reference_url_from_market_research(self):
+        r = hub.build_request(self.conn, self.p)
+        self.assertNotIn("reference_urls", r)          # 1번 참고 페이지가 없으면 넣지 않음
+        url = "https://www.alibaba.com/product-detail/x_1600.html"
+        with self.conn:
+            self.conn.execute("UPDATE products SET ref_url = ? WHERE id = ?", (url, self.p["id"]))
+        p = self.conn.execute("SELECT * FROM products WHERE id = ?", (self.p["id"],)).fetchone()
+        self.assertEqual(hub.build_request(self.conn, p)["reference_urls"], [url])
+        with self.conn:
+            self.conn.execute("UPDATE products SET ref_url = 'images/1.jpg' WHERE id = ?", (self.p["id"],))
+        p = self.conn.execute("SELECT * FROM products WHERE id = ?", (self.p["id"],)).fetchone()
+        self.assertNotIn("reference_urls", hub.build_request(self.conn, p))   # http(s) 주소만
+
     def test_japan(self):
         r = hub.build_request(self.conn, self.p, "retail", 10, country="Japan")
         self.assertEqual(r["preferred_countries"], ["Japan"])

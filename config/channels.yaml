@@ -7,6 +7,7 @@
 #   {en} 영문 검색어(URL 인코딩)  {en_dash} 공백을 - 로 바꾼 영문  {zh} 중문(UTF-8)  {zh_gbk} 중문(GBK, 1688용)
 #   {ja} 일본어(UTF-8)
 # countries: 이 사이트가 다루는 공급 국가 (생략하면 China). 조사 조건의 preferred_countries 첫 나라와 맞는 사이트만 평가.
+# 미국 사이트는 영문 검색어({en})를 씀.
 # shipping(한국 배송) 고유 점수: 일본 쇼핑몰은 대부분 해외 배송이 안 돼 배송대행지(배대지)가 필요하므로 낮게 둠.
 
 items:
@@ -111,3 +112,33 @@ sites:
     search: "https://www.superdelivery.com/en/do/psl/?word={ja}"   # 해외 바이어용 영문 사이트
     base: {protection: 4, shipping: 3, convenience: 3, documents: 3}
     note: "일본 제조사·도매상 B2B 몰. 해외 바이어용 영문 사이트(수입용 도매가)가 있음. 판매자마다 해외 거래 허용 여부가 다름."
+
+  # ---------------- 미국 ----------------
+  ebay:
+    label: eBay (미국)
+    countries: [USA]
+    suits: [retail, small_batch]
+    search: "https://www.ebay.com/sch/i.html?_nkw={en}"
+    base: {protection: 4, shipping: 3, convenience: 4, documents: 1}
+    note: "개인·소매상이 많아 단종품·희소품·중고까지 선택지가 넓음. eBay Money Back Guarantee 보호. 판매자마다 한국 배송(국제 배송·GSP) 여부가 달라 안 되면 배대지 필요. 시험성적서는 받기 어려움."
+  amazon_us:
+    label: Amazon.com
+    countries: [USA]
+    suits: [retail, small_batch]
+    search: "https://www.amazon.com/s?k={en}"
+    base: {protection: 5, shipping: 4, convenience: 5, documents: 2}
+    note: "A-to-z 보증, 상당수 상품이 한국 직배송(관부가세 선결제). 마켓플레이스 판매자 상품은 해외 배송 불가가 있음."
+  walmart:
+    label: Walmart.com
+    countries: [USA]
+    suits: [retail]
+    search: "https://www.walmart.com/search?q={en}"
+    base: {protection: 3, shipping: 1, convenience: 2, documents: 1}
+    note: "생활용품 가격이 싼 편. 해외 배송·해외 카드 결제가 거의 안 돼 배대지·구매대행 필요."
+  thomasnet:
+    label: Thomasnet (미국 제조사)
+    countries: [USA]
+    suits: [small_batch, oem]
+    search: "https://www.thomasnet.com/search.html?what={en}"
+    base: {protection: 2, shipping: 2, convenience: 2, documents: 4}
+    note: "미국 제조사·유통사 디렉터리. 직접 연락해 견적·소량 주문 협의. 단가는 중국보다 높지만 품질·서류 대응이 좋음."

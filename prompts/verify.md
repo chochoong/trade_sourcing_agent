@@ -9,10 +9,12 @@
    - 중국: 天眼查·企查查·国家企业信用信息公示系统 검색 결과 등
    - 일본: 국세청 법인번호 공표 사이트(houjin-bangou.nta.go.jp)의 법인번호·소재지, 쇼핑몰·홈페이지의
      「特定商取引法に基づく表記」(사업자명·주소·대표자·전화)와 「会社概要」. 둘이 일치하는지 확인
+   - 미국: 주(州) 국무부(Secretary of State) 법인 검색·OpenCorporates 의 법인 등록·설립일, BBB 평가,
+     eBay 판매자는 피드백 점수·긍정률·가입 연도(Top Rated Seller 여부)
 3. 제조사인지 무역상·리셀러인지 (공장 주소, 생산설비 사진, 경영범위)
 4. 요청된 인증을 실제 보유했는지 (인증서 번호, 인증기관)
 5. 후기, 사기 신고, 분쟁, 제재 리스트 등 부정 이력 ("업체명 scam", "업체명 fraud", "업체명 骗子", "業者名 詐欺" 등)
-6. 다음 단계(협상)에 필요한 공개 연락처와 거래조건(리드타임, 결제조건, 샘플 정책, 한국 수출 경험)
+6. 5번 협상 단계에 필요한 공개 연락처와 거래조건(리드타임, 결제조건, 샘플 정책, 한국 수출 경험)
 
 ## 규칙
 - 로그인·봇 차단 우회 금지. 공개 정보만 사용하세요.
@@ -21,8 +23,20 @@
 - store_url: 후보의 urls 가 검색 결과·카테고리·쇼룸·가이드 페이지(`countrysearch`, `showroom`, `accio.com` 등)뿐이면,
   이 업체의 고유 페이지(스토어 홈, 상품 상세, 회사 소개)를 찾아 적으세요. 못 찾으면 null.
   후보 urls 에 요청 품목의 상품 상세 페이지가 없으면, 이 업체가 그 품목을 파는 상품 상세 페이지를 우선해서 적으세요.
+- 소싱 조건에 `reference_urls`(시장조사 단계의 대표 상품)가 있으면, 이 업체 상품이 그것과 같은 물건(형태·핵심 기능·사양)인지
+  비교하세요. 다른 물건이거나 핵심 사양이 빠졌으면 risk_flags 에 "참고 상품과 사양 다름: …"으로 적으세요.
   스토어 주력 품목이 요청 품목과 다르면(종합 셀러·무역상) risk_flags 에 적으세요.
 - price_range: 요청 수량에 해당하는 단가를 확인했으면 `"USD 최저-최고"` 형식으로 적으세요 (위안·엔이면 USD 로 환산하고 원문을 괄호로). 모르면 null.
+- specs (제품 사양, 3번 통관·규제 체크가 씀): 이 업체의 **상품 상세 페이지에서 확인한 사실만** 적으세요.
+  - 확실하지 않으면 null. 추측으로 false 를 넣지 마세요 (false 는 "없다"고 확인했을 때만).
+  - 모델·옵션마다 사양이 다르면 위험한 쪽을 적으세요 (예: 일반형과 LED·전지형이 있으면 전지형 기준).
+  - power_source: "none"(전원 없음) / "ac"(콘센트) / "usb"(USB 전원) / "battery_lithium"(리튬전지 내장) / "battery_other"(건전지 등)
+  - is_electronic: 전자회로(PCB·칩·LED 제어 등) / has_heating_or_motor: 발열체·모터 / wireless: 블루투스·Wi-Fi·RF
+  - food_contact: 음식·음료에 직접 닿음 / chemical_product: 세정제·방향제·접착제·코팅제 등 생활화학제품
+  - hygiene_product: 칫솔·물티슈·일회용 컵 등 위생용품 / cosmetic: 피부·모발에 바르는 화장품
+  - synthetic_resin_household: 전기 없는 합성수지(플라스틱·TPE·PVC·EVA·고무) 생활용품 / textile_wearable: 섬유 제품이거나 몸에 착용
+  - origin_country: 생산국 ISO 2자리 코드 (예: CN, VN). 페이지에 "Place of Origin" 등으로 적힌 경우만
+  - materials: 페이지에 적힌 재질 (예: ["ABS", "실리콘"]). evidence: 사양 근거 [{"claim": "리튬 배터리 300mAh", "url": "상품 페이지"}]
 - '사람이 확인한 추가 정보'가 있으면 그것을 가장 신뢰도 높은 근거로 사용하세요.
 - 근거 없이 점수를 주지 마세요. 확인 못 한 항목은 0점 처리하고 unverified 에 적으세요.
 - 각 점수는 점수표의 max 를 넘을 수 없습니다.
@@ -42,6 +56,13 @@
   "store_url": null,
   "price_range": null,
   "summary": "이 업체에 대한 2~3문장 평가",
-  "first_questions": ["첫 문의 때 꼭 물어볼 질문 1", "질문 2", "질문 3"]
+  "first_questions": ["첫 문의 때 꼭 물어볼 질문 1", "질문 2", "질문 3"],
+  "specs": {
+    "flags": {"power_source": null, "is_electronic": null, "has_heating_or_motor": null, "wireless": null,
+              "food_contact": null, "chemical_product": null, "hygiene_product": null, "cosmetic": null,
+              "synthetic_resin_household": null, "textile_wearable": null, "origin_country": null},
+    "materials": [],
+    "evidence": [{"claim": "확인한 사양", "url": "https://..."}]
+  }
 }
 ```

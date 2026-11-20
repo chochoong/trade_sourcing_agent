@@ -13,6 +13,8 @@ discover_hint: |
   - 같은 상품을 여러 판매자가 팔면 판매량·후기가 많은 곳을 우선하고, 지나치게 싼 곳은 가품 가능성을 notes 에 적으세요.
   - 일본(preferred_countries 에 Japan)이면: 일본어 검색어로 라쿠텐·Amazon.co.jp·Yahoo!ショッピング 의 정품 판매점,
     브랜드 공식 온라인몰을 찾으세요. 해외 배송이 안 되면 배송대행지(배대지)가 필요하다고 notes 에 적으세요.
+  - 미국(preferred_countries 에 USA)이면: 영문 검색어로 eBay(피드백 점수 높은 판매자·Top Rated)·Amazon.com·
+    Walmart 의 상품을 찾으세요. 한국 배송(국제 배송·eBay GSP) 여부와 배송비를 확인하고, 안 되면 배대지 필요라고 notes 에 적으세요.
 
 # 검증 단계에서 중점적으로 볼 것
 verify_focus: |
