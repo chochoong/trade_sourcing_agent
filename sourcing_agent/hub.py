@@ -168,6 +168,12 @@ def save_results(conn, run_id, product_id, suppliers, report_path, purchase_mode
     — 대시보드가 MOQ 배지(소량 OK / 초과 / 미확인)의 기준으로 씀.
     """
     with conn:
+        # 같은 구매 방식으로 다시 조사하면 예전 실행의 추천 표시를 지움 → 추천 = 최신 실행의 상위 3곳만.
+        # (3번이 추천 중에서 대표 공급처를 고르므로, 쌓이면 사양 없는 예전 업체가 대표가 됨)
+        # 이번에 하나도 못 찾았으면 예전 추천을 그대로 둠. 사람이 고른 selected 는 건드리지 않음.
+        if suppliers:
+            conn.execute("UPDATE product_suppliers SET is_top_pick = 0 WHERE product_id = ? AND is_top_pick = 1"
+                         " AND purchase_mode IS ?", (product_id, purchase_mode))
         for i, r in enumerate(suppliers):
             c = r.get("contacts") if isinstance(r.get("contacts"), dict) else {}
             other = " / ".join(f"{k} {c[k]}" for k in ("phone", "messenger") if c.get(k)) or None

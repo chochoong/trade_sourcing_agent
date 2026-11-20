@@ -76,6 +76,30 @@ class FromDbTest(unittest.TestCase):
         _, exp = self.run_hub("small_batch")
         exp.assert_not_called()
 
+    def test_rerun_replaces_top_picks(self):
+        """같은 구매 방식으로 다시 조사하면 추천 = 최신 실행의 상위 3곳만. 다른 구매 방식은 그대로."""
+        def sup(*names):
+            return [{"name": n, "country": "China", "total": 80 - i, "grade": "B"} for i, n in enumerate(names)]
+
+        def save(names, mode):
+            run = conn.execute("INSERT INTO agent_runs (agent, status) VALUES ('sourcing', 'succeeded')").lastrowid
+            hub.save_results(conn, run, self.pid, sup(*names), "r.html", purchase_mode=mode)
+
+        def picks(mode):
+            return sorted(r[0] for r in conn.execute(
+                "SELECT s.company FROM product_suppliers ps JOIN suppliers s ON s.id = ps.supplier_id"
+                " WHERE ps.product_id = ? AND ps.is_top_pick = 1 AND ps.purchase_mode = ?", (self.pid, mode)))
+
+        conn = db.connect()
+        save(["A", "B", "C", "D"], "small_batch")
+        save(["X", "Y"], "oem")
+        save(["B", "E", "F"], "small_batch")
+        self.assertEqual(picks("small_batch"), ["B", "E", "F"])   # 예전 A·C 추천 해제, B 는 이번에도 추천
+        self.assertEqual(picks("oem"), ["X", "Y"])                # 다른 구매 방식은 건드리지 않음
+        save([], "small_batch")                                   # 못 찾은 실행은 예전 추천 유지
+        self.assertEqual(picks("small_batch"), ["B", "E", "F"])
+        conn.close()
+
 
 if __name__ == "__main__":
     unittest.main()
