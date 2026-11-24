@@ -76,6 +76,19 @@ class FromDbTest(unittest.TestCase):
         _, exp = self.run_hub("small_batch")
         exp.assert_not_called()
 
+    def test_skips_mixed_variant_products(self):
+        """1번이 나눈 원래 품목('[변형 혼합]')은 판매가가 섞여 있어 조사하지 않고 나눈 품목을 안내."""
+        conn = db.connect()
+        with conn:
+            conn.execute("UPDATE products SET notes = ? WHERE id = ?",
+                         ("[변형 혼합] [1번 시세] 나눔 → #66 낱개 4,000원, #67 LED형 8,000원", self.pid))
+        msgs = []
+        with mock.patch.object(hub, "log_stderr", msgs.append):
+            self.assertEqual(hub.pending_products(conn, [self.pid]), [])
+            self.assertEqual(hub.pending_products(conn), [])
+        self.assertIn("#66, #67", msgs[0])
+        conn.close()
+
     def test_rerun_replaces_top_picks(self):
         """같은 구매 방식으로 다시 조사하면 추천 = 최신 실행의 상위 3곳만. 다른 구매 방식은 그대로."""
         def sup(*names):

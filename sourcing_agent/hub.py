@@ -38,9 +38,34 @@ WHERE p.stage = 'sourcing'
 ORDER BY p.id"""
 
 
+MIXED_MARK = "[변형 혼합]"   # 1번이 판매가가 다른 변형을 별도 품목으로 나눈 원래 품목 (notes 첫머리)
+
+
+def split_into(p):
+    """'[변형 혼합]' 품목이면 나눈 품목 번호 목록 (notes 의 #64 등), 아니면 None."""
+    notes = str(product_field(p, "notes") or "")
+    if not notes.startswith(MIXED_MARK):
+        return None
+    return sorted({int(x) for x in re.findall(r"#(\d+)", notes)} - {p["id"]})
+
+
+def _skip_mixed(rows, log=None):
+    """변형 혼합 품목은 판매가(est_retail_krw)가 섞인 값이라 단가 상한이 틀림 → 조사하지 않고 나눈 품목을 안내."""
+    log = log or log_stderr
+    ok = []
+    for r in rows:
+        parts = split_into(r)
+        if parts is None:
+            ok.append(r)
+        else:
+            log(f"  · 건너뜀: [{r['id']}] {r['name']} — 변형 혼합 품목 (1번이 나눔). "
+                f"나눈 품목을 조사하세요: {', '.join(f'#{i}' for i in parts) or 'notes 참고'}")
+    return ok
+
+
 def pending_products(conn, ids=None):
     if not ids:
-        return conn.execute(PENDING_SQL).fetchall()
+        return _skip_mixed(conn.execute(PENDING_SQL).fetchall())
     rows = conn.execute(f"SELECT * FROM products WHERE id IN ({', '.join('?' * len(ids))}) ORDER BY id",
                         list(ids)).fetchall()
     found = {r["id"] for r in rows}
@@ -54,7 +79,7 @@ def pending_products(conn, ids=None):
                        f"(먼저 `trade_hub select {r['id']}`)")
         else:
             ok.append(r)
-    return ok
+    return _skip_mixed(ok)
 
 
 # 공급 국가별 추가 지시 (조사 조건 notes 에 덧붙임)
