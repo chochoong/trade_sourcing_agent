@@ -232,7 +232,8 @@ python -m sourcing_agent run requests/example.yaml > out.json
       "price_basis": {               // 가격 기준 (1.4~, 확인한 키만 — 모르는 키는 없음). 공용 DB trade_terms_json.price_basis
         "currency": "JPY", "low": 21000, "high": 42000, "fx_assumed": 154,
         "includes_shipping": false,  // 한국까지 배송비 포함 가격이면 true → 4번이 운임을 0으로
-        "includes_tax": false, "preorder": true,
+        "includes_tax": true,        // 한국 관부가세까지 포함(DDP)일 때만 키가 있음 (판매국 소비세 포함은 해당 없음)
+        "preorder": true,
         "kind": "retail",            // factory / wholesale / retail / resale (AliExpress·eBay 상품 페이지뿐이면 retail)
         "variant": "4구 LED형",      // 이 단가가 가리키는 상품. DB price_note 에도 "USD … — 4구 LED형" 으로 붙임
         "evidence": [{"claim": "JPY 2,980 税込 送料別", "url": "https://..."}]

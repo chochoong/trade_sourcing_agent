@@ -17,6 +17,9 @@ class PriceBasisTest(unittest.TestCase):
                              "includes_shipping": False, "preorder": True, "kind": "resale",
                              "variant": "M6a 30주년 박스", "evidence": [{"claim": "21,000円", "url": "u"}]})
         self.assertNotIn("includes_tax", b)            # 모르면 키 없음
+        # includes_tax 는 DDP(한국 관부가세 포함)일 때만 — false 는 키 없음
+        self.assertNotIn("includes_tax", normalize_price_basis({"kind": "retail", "includes_tax": False}))
+        self.assertTrue(normalize_price_basis({"includes_tax": "true"})["includes_tax"])
         self.assertIsNone(normalize_price_basis({"currency": None, "kind": "모름", "includes_shipping": "?"}))
         self.assertIsNone(normalize_price_basis(None))
         self.assertNotIn("fx_assumed", normalize_price_basis({"currency": "USD", "low": 1, "fx_assumed": 1}))

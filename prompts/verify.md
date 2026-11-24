@@ -40,7 +40,8 @@
   - currency·low·high: 원래 통화(USD·CNY·JPY 등)와 그 통화의 요청 수량 구간 단가. fx_assumed: USD 로 환산할 때 쓴 환율(1 USD = ?)
   - includes_shipping: 한국까지 배송비가 단가에 포함(무료배송·送料無料 해외 포함·Free shipping to Korea)이면 true,
     배송비가 따로 붙으면 false. **중요** — 4번이 운임을 이중으로 더하지 않게 씀. 국내 무료배송만이면 false.
-  - includes_tax: 소비세·VAT 포함가(税込)면 true, 별도(税抜)면 false. preorder: 예약판매(予約·Pre-order)면 true
+  - includes_tax: **한국 관세·부가세까지 포함된 가격(DDP, "관부가세 포함"·"Duties & taxes included to Korea")일 때만** true.
+    판매국 세금(일본 소비세 税込·중국 增值税·미국 sales tax)만 포함된 경우는 null 로 두세요. preorder: 예약판매(予約·Pre-order)면 true
   - kind: factory(공장 출고가) / wholesale(도매몰·Ready to Ship 도매가) / retail(소매 판매가) / resale(리셀·프리미엄 가격)
   - variant: 이 단가가 가리키는 상품을 짧게 (예: "4구 LED형", "M5 30팩 박스"). evidence: 가격 근거 원문과 URL
 - specs (제품 사양, 3번 통관·규제 체크가 씀): 이 업체의 **상품 상세 페이지에서 확인한 사실만** 적으세요.

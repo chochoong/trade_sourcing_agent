@@ -4,7 +4,8 @@
   {"currency": "JPY", "low": 21000, "high": 42000,   원래 통화와 단가 범위 (요청 수량 구간)
    "fx_assumed": 154,                                USD 환산에 쓴 환율 (1 USD = ? 원래 통화)
    "includes_shipping": false,                       배송비 포함 가격인지 (알리 무료배송 등이면 true)
-   "includes_tax": false, "preorder": true,
+   "includes_tax": true,                             한국 관부가세까지 포함(DDP)일 때만 true — 판매국 세금(일본 소비세 등)은 해당 없음
+   "preorder": true,
    "kind": "factory|wholesale|retail|resale",       공장 / 도매 / 소매 / 리셀
    "variant": "4구 LED형",                           이 단가가 가리키는 상품 (모델·구성·규격)
    "evidence": [{"claim": ..., "url": ...}]}
@@ -82,6 +83,8 @@ def normalize_price_basis(v):
         b = _bool(v.get(k))
         if b is not None:
             out[k] = b
+    if out.get("includes_tax") is not True:   # 4번은 true 를 'DDP(한국 관부가세 포함)'로 읽음 → 그 밖은 키 없음
+        out.pop("includes_tax", None)
     kind = kind_of(v.get("kind"))
     if kind:
         out["kind"] = kind
@@ -131,8 +134,8 @@ def price_basis_text(b):
         parts.append(f"{b.get('currency') or ''} {rng}".strip())
     if "includes_shipping" in b:
         parts.append("배송비 포함" if b["includes_shipping"] else "배송비 별도")
-    if "includes_tax" in b:
-        parts.append("세금 포함" if b["includes_tax"] else "세금 별도")
+    if b.get("includes_tax"):
+        parts.append("한국 관부가세 포함(DDP)")
     if b.get("kind"):
         parts.append({"factory": "공장가", "wholesale": "도매", "retail": "소매", "resale": "리셀"}[b["kind"]])
     if b.get("preorder"):
