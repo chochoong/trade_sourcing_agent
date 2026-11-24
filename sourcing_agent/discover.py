@@ -75,4 +75,23 @@ def prefilter(candidates: list[dict], request: dict) -> list[dict]:
         return s
 
     ranked = sorted(candidates, key=pre_score, reverse=True)
-    return ranked[: request.get("shortlist_size") or 10]
+    size = request.get("shortlist_size") or 10
+    if request.get("sourcing_type") != "small_batch":
+        return ranked[:size]
+    # 소량 사입: 소매 마켓 판매자(AliExpress·eBay 상품 페이지)는 최대 RETAIL_CAP 곳 — 소매가는 도매 단가보다 비싸서
+    # 소매 판매자로만 채우면 단가 상한을 맞추는 곳이 안 남음. 도매 후보가 모자라면 그때 소매 판매자로 채움
+    retail = [c for c in ranked if is_retail_listing(c)]
+    keep = [c for c in ranked if not is_retail_listing(c)] + retail[:RETAIL_CAP]
+    keep = sorted(keep, key=ranked.index)[:size]
+    extra = [c for c in retail[RETAIL_CAP:] if c not in keep]
+    return keep + extra[: size - len(keep)]
+
+
+RETAIL_CAP = 2
+_RETAIL_HOSTS = ("aliexpress.", "ebay.")
+
+
+def is_retail_listing(c) -> bool:
+    """소매 마켓(AliExpress·eBay) 상품 페이지만 있는 후보인지 (도매 페이지가 하나라도 있으면 도매로 봄)."""
+    urls = [str(u).lower() for u in _as_list(c.get("urls")) if u]
+    return bool(urls) and all(any(h in u for h in _RETAIL_HOSTS) for u in urls)

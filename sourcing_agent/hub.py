@@ -93,6 +93,34 @@ def reference_url(p):
     return url if re.match(r"https?://", url) else None
 
 
+def _pct(v, default):
+    """products.duty_rate (DB 는 0~1 비율, 예: 0.08) → 퍼센트 숫자 8. 1보다 크면 이미 퍼센트로 봄. 모르면 default."""
+    try:
+        x = float(str(v).strip().rstrip("%"))
+    except (TypeError, ValueError):
+        return float(default)
+    return x * 100 if x <= 1 else x
+
+
+def price_ceiling(p, sourcing_type="small_batch"):
+    """소량 사입: 국내 판매가에서 역산한 '이 값 이하로 사야 마진이 남는' 개당 단가 상한 (USD, 설명). 없으면 None."""
+    cfg = (load_rubric(sourcing_type) or {}).get("price_ceiling")
+    retail = product_field(p, "est_retail_krw")
+    if not cfg or not retail:
+        return None
+    duty = _pct(product_field(p, "duty_rate"), cfg.get("duty_pct", 8))
+    ship = product_field(p, "est_shipping_usd")
+    freight = float(ship) if isinstance(ship, (int, float)) and ship >= 0 else float(cfg.get("freight_usd", 0.5))
+    vat, fee, margin, fx = (float(cfg.get(k, d)) for k, d in
+                            (("vat_pct", 10), ("fee_pct", 12), ("margin_pct", 25), ("usd_krw", 1400)))
+    usd = retail / (1 + vat / 100) * (1 - (fee + margin) / 100) / fx / (1 + duty / 100) - freight
+    if usd <= 0:
+        return 0.0, (f"국내 판매가 {retail:,}원으로는 수수료 {fee:g}%·마진 {margin:g}%·관세 {duty:g}%·운임 ${freight:g} 를 "
+                     "빼면 남는 단가가 없음 (판매가를 다시 확인할 것)")
+    return round(usd, 2), (f"소량 구매 단가 상한 약 USD {usd:.2f} — 국내 판매가 {retail:,}원에서 부가세·수수료 {fee:g}%·"
+                           f"목표 마진 {margin:g}%·관세 {duty:g}%·개당 운임 ${freight:g} 를 뺀 추정값 (이 값 이하면 마진이 남음)")
+
+
 def build_request(conn, p, sourcing_type="small_batch", max_order_qty=None, country=None):
     """DB 품목 → 소싱 조건 dict (YAML 요청 파일과 같은 형식). country 없으면 1번 추천 국가."""
     country = product_country(p, country)
@@ -100,10 +128,16 @@ def build_request(conn, p, sourcing_type="small_batch", max_order_qty=None, coun
                      (p["id"],)).fetchone()
     fob = s["est_fob_usd"] if s else None
     price = []
-    if fob:
-        price.append(f"FOB 약 USD {fob:g} 내외 (시장조사 단계 웹 시세)")
-    if p["est_retail_krw"]:
-        price.append(f"국내 판매가 약 {p['est_retail_krw']:,}원 — 마진이 남는 단가일 것")
+    ceiling = price_ceiling(p, sourcing_type) if sourcing_type == "small_batch" else None
+    if ceiling:   # 소량 사입: FOB(수백 개 이상 공장 단가) 대신 판매가에서 역산한 상한으로 단가를 봄
+        price.append(ceiling[1])
+        if fob:
+            price.append(f"참고: 대량 FOB 약 USD {fob:g} (시장조사 웹 시세, 수백 개 이상 기준 — 소량 단가와 직접 비교하지 말 것)")
+    else:
+        if fob:
+            price.append(f"FOB 약 USD {fob:g} 내외 (시장조사 단계 웹 시세)")
+        if p["est_retail_krw"]:
+            price.append(f"국내 판매가 약 {p['est_retail_krw']:,}원 — 마진이 남는 단가일 것")
     notes = [f"- {label}: {p[k]}" for k, label in
              (("reason", "선정 이유"), ("regulations", "예상 인증·규제 (판매자가 시험성적서를 줄 수 있는지 확인)"),
               ("risk", "위험 요소"), ("notes", "메모")) if p[k]]
@@ -123,6 +157,7 @@ def build_request(conn, p, sourcing_type="small_batch", max_order_qty=None, coun
         # 1번이 시장조사 중 본 대표 상품 페이지 → 같은 물건(사양)을 찾는 기준. 구매처 상품 페이지면 그 판매자도 후보로
         "reference_urls": [ref] if ref else None,
         "target_price": " / ".join(price) or None,
+        "price_ceiling_usd": ceiling[0] if ceiling else None,
         "required_certs": [],          # 인증 확정은 3번(통관·규제 체크) 단계 — 여기서는 notes로만 전달
         "preferred_countries": [country],
         "prefer_manufacturer": sourcing_type == "oem",

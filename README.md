@@ -23,6 +23,8 @@
 
 마켓 API 키(`ALIEXPRESS_APP_KEY`·`ALIEXPRESS_APP_SECRET`, `EBAY_CLIENT_ID`·`EBAY_CLIENT_SECRET`)는 `.env` 에 넣습니다. AliExpress 로그인 토큰은 buyagent 가 발급·갱신하는 `buyagent/data/aliexpress_token.json` 을 **읽기만** 합니다 (여러 곳에서 갱신하면 서로의 토큰이 무효가 됨). 토큰이 만료됐으면 buyagent 를 한 번 실행하면 갱신됩니다. 일본은 아직 마켓 API 가 없어 웹 검색만 씁니다. 요청에 `market_api: false` 를 넣으면 이 단계를 끕니다.
 
+소량 사입(small_batch)은 목표 단가를 1번의 FOB(수백 개 이상 공장 단가) 대신 **소량 구매 단가 상한**으로 봅니다: 국내 판매가 ÷ 1.1 × (1 − 수수료 − 목표 마진) ÷ 환율 ÷ (1+관세) − 개당 운임 (값은 `config/scoring/small_batch.yaml` 의 `price_ceiling`). FOB 는 참고값으로만 넘기고, 대량 사입·OEM 은 지금처럼 FOB 기준입니다. 또 소량 사입 후보에는 소매 마켓 판매자(AliExpress·eBay 상품 페이지만 있는 곳)를 최대 2곳만 넣고 나머지는 1688·Alibaba 도매 후보로 채웁니다.
+
 ## 설치 (Python 3.10 이상)
 
 ```bash

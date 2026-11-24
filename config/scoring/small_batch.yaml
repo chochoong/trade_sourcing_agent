@@ -2,6 +2,17 @@
 # 가중치나 기준을 바꾸고 싶으면 이 파일만 수정하세요. (items 의 max 합계 = 100)
 label: 소량 도매 (테스트 판매)
 
+# 소량 구매 단가 상한 (2번이 국내 판매가에서 역산하는 추정값 — 정확한 원가는 4번 원가·수익 계산)
+#   상한(USD) = 국내 판매가 ÷ (1+부가세) × (1 − 판매 수수료 − 목표 마진) ÷ 환율 ÷ (1+관세) − 개당 운임
+#   관세: products.duty_rate 가 없으면 duty_pct, 운임: products.est_shipping_usd 가 없으면 freight_usd (4번 config/hub.yaml 예비값과 같게)
+price_ceiling:
+  usd_krw: 1400
+  vat_pct: 10
+  fee_pct: 12          # 스마트스토어 등 판매 수수료 (결제 수수료 포함 대략)
+  margin_pct: 25       # 남기고 싶은 마진
+  duty_pct: 8
+  freight_usd: 0.5
+
 # 검색 단계에 추가로 전달되는 방향
 discover_hint: |
   이번 소싱은 테스트 판매용 소량 구매입니다 (max_order_qty 이하).
@@ -32,7 +43,7 @@ items:
   price_fit:
     label: 단가 적합도
     max: 10
-    guide: "소량 구매 단가가 목표 단가 범위 안 10점, 범위를 20% 이내로 벗어남 5점, 크게 벗어남 또는 미확인 0점"
+    guide: "소량 구매 단가가 target_price 의 '소량 구매 단가 상한' 이하 10점, 상한을 20% 이내로 초과 5점, 크게 초과 또는 미확인 0점. 상한이 없으면 목표 단가 범위 기준. '대량 FOB' 참고값은 수백 개 이상 기준이라 소량 단가와 직접 비교하지 말 것"
   seller_reputation:
     label: 판매자 평판
     max: 20
