@@ -13,12 +13,15 @@
 | 단계 | 방식 | 자동/수동 |
 |---|---|---|
 | ② 검색 | Claude API 웹 검색으로 검색엔진 결과에서 후보 수집 (`site:alibaba.com` 등) | 자동 |
+| ②' 마켓 API | 중국은 AliExpress, 미국은 eBay **공식 API**로 실제 판매가·판매 수·판매자 평점·포장 무게 확인 (무료, 키 없으면 건너뜀) → 검색·검증 AI 의 근거, 같은 상품 업체에 포장·무게 채움 | 자동 |
 | ③ 1차 필터 | 제조사 여부, 업력, 인증, 홈페이지 유무로 규칙 기반 선별 (LLM 비용 없음) | 자동 |
 | ③' 수동 보충 | 로그인해야 보이는 정보를 `data/manual/업체명.txt` 에 붙여넣기 | 수동 (선택) |
 | ④ 검증 | 홈페이지, 기업정보, 인증, 사기 이력 교차 확인 후 점수표로 채점 | 자동 |
 | ⑤ 리포트 | `results.csv`(엑셀), `report.md`, `results.json` | 자동 |
 
 점수 합산과 등급은 LLM이 아니라 코드(`scoring.py`)가 계산해서, 기준이 매번 똑같이 적용됩니다.
+
+마켓 API 키(`ALIEXPRESS_APP_KEY`·`ALIEXPRESS_APP_SECRET`, `EBAY_CLIENT_ID`·`EBAY_CLIENT_SECRET`)는 `.env` 에 넣습니다. AliExpress 로그인 토큰은 buyagent 가 발급·갱신하는 `buyagent/data/aliexpress_token.json` 을 **읽기만** 합니다 (여러 곳에서 갱신하면 서로의 토큰이 무효가 됨). 토큰이 만료됐으면 buyagent 를 한 번 실행하면 갱신됩니다. 일본은 아직 마켓 API 가 없어 웹 검색만 씁니다. 요청에 `market_api: false` 를 넣으면 이 단계를 끕니다.
 
 ## 설치 (Python 3.10 이상)
 

@@ -16,6 +16,7 @@ from .channels import assess_channels
 from .discover import discover, prefilter
 from .llm import LLM
 from .manual import create_templates, slugify
+from .marketplaces import compact, enrich, market_snapshot
 from .paths import OUTPUT
 from .report import write_reports
 from .scoring import DEFAULT_SOURCING_TYPE, load_rubric
@@ -62,6 +63,11 @@ def run_discover(request: dict, run_dir=None, log=log_stderr) -> dict:
     run_dir.mkdir(parents=True, exist_ok=True)
     rubric = load_rubric(request["sourcing_type"])
     log(f"[1/2] 후보 업체 검색 중... (구매 방식: {rubric.get('label', request['sourcing_type'])})")
+    # 공식 마켓 API (중국 AliExpress / 미국 eBay) 로 실제 판매가·판매 수·판매자 확인 → 검색·검증 AI 의 근거
+    market = market_snapshot(request, log=log) if "market_listings" not in request else None
+    if market:
+        request["market_listings"] = compact(market)
+        (run_dir / "market.json").write_text(json.dumps(market, ensure_ascii=False, indent=2), encoding="utf-8")
     candidates = discover(llm, request, rubric)
     shortlist = prefilter(candidates, request)
     (run_dir / "request.json").write_text(json.dumps(request, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -79,11 +85,13 @@ def run_verify(run_dir, log=log_stderr) -> dict:
     request = validate_request(json.loads((run_dir / "request.json").read_text(encoding="utf-8")))
     shortlist = json.loads((run_dir / "shortlist.json").read_text(encoding="utf-8"))
     llm, rubric = LLM(), load_rubric(request["sourcing_type"])
+    market_file = run_dir / "market.json"
+    market = json.loads(market_file.read_text(encoding="utf-8")) if market_file.exists() else None
 
     results = []
     for i, c in enumerate(shortlist, 1):
         log(f"[2/2] 검증 중 ({i}/{len(shortlist)}): {c.get('name')}")
-        results.append(verify_one(llm, c, request, rubric))
+        results.append(enrich(verify_one(llm, c, request, rubric), market))
 
     channels = []
     if request.get("assess_channels", True):   # 요청에 assess_channels: false 면 건너뜀 (API 호출 1회 절약)

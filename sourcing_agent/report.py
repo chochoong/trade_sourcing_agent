@@ -9,7 +9,8 @@ from .packaging import packaging_text
 
 # results.json 형식이 바뀌면 올립니다. 다음 단계 에이전트는 이 값을 확인하고 읽으세요.
 #   1.x: 필드 추가만 (하위 호환)   2.0: 필드 삭제/의미 변경
-SCHEMA_VERSION = "1.2"   # 1.1: suppliers[].specs (제품 사양) · 1.2: suppliers[].packaging (포장·무게). 모르면 null
+SCHEMA_VERSION = "1.3"   # 1.1: suppliers[].specs (제품 사양) · 1.2: suppliers[].packaging (포장·무게)
+#   1.3: request.market_listings (AliExpress·eBay 공식 API 판매 상품) · suppliers[].market_listing. 모르면 null
 
 
 def _j(v):
@@ -143,8 +144,18 @@ def _request_lines(request):
             ("첫 구매 수량", request.get("max_order_qty") or request.get("moq")),
             ("필요 인증", _j(request.get("required_certs"))),
             ("선호 국가", _j(request.get("preferred_countries"))),
-            ("HS 코드", request.get("hs_code"))]
+            ("HS 코드", request.get("hs_code")),
+            ("마켓 실판매가", _market_line(request.get("market_listings")))]
     return [(k, _j(v)) for k, v in rows if v]
+
+
+def _market_line(m):
+    """공식 마켓 API 요약 한 줄 (AliExpress 2,345개 · $2.5~$9.9, 중간 $4.2). 없으면 None."""
+    if not isinstance(m, dict) or not m.get("price_usd"):
+        return None
+    p = m["price_usd"]
+    return (f"{m.get('source')} '{m.get('keyword')}' 상품 {m.get('total') or 0:,}개 · "
+            f"${p['min']:g}~${p['max']:g} (중간 ${p['median']:g}) — 공식 API")
 
 
 def _facts(r):
