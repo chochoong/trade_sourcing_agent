@@ -161,10 +161,11 @@ def _list(v):
     return v if isinstance(v, list) else ([] if v is None else [v])
 
 
-def _old_packaging(conn, product_id, supplier_id):
-    """예전 조사에서 저장한 포장·무게 (같은 품목·공급처). 없으면 None."""
-    row = conn.execute("SELECT trade_terms_json FROM product_suppliers WHERE product_id = ? AND supplier_id = ?",
-                       (product_id, supplier_id)).fetchone()
+def _old_packaging(conn, product_id, supplier_id, purchase_mode=None):
+    """예전 조사에서 저장한 포장·무게 (같은 품목·공급처, 같은 구매 방식 줄 우선 — 줄은 구매 방식별로 따로). 없으면 None."""
+    row = conn.execute("SELECT trade_terms_json FROM product_suppliers WHERE product_id = ? AND supplier_id = ?"
+                       " AND trade_terms_json LIKE '%\"packaging\"%' ORDER BY (purchase_mode IS ?) DESC, updated_at DESC",
+                       (product_id, supplier_id, purchase_mode)).fetchone()
     try:
         old = json.loads(row["trade_terms_json"]) if row and row["trade_terms_json"] else {}
     except (TypeError, ValueError):
@@ -218,7 +219,7 @@ def save_results(conn, run_id, product_id, suppliers, report_path, purchase_mode
             # 포장·무게 → trade_terms_json.packaging (4번 원가 계산이 운임 추정에 씀). 이번에 모르면 예전 값 유지
             if link["trade_terms_json"] is not None or r.get("packaging"):
                 terms = dict(link["trade_terms_json"] or {})
-                terms["packaging"] = r.get("packaging") or _old_packaging(conn, product_id, sid)
+                terms["packaging"] = r.get("packaging") or _old_packaging(conn, product_id, sid, purchase_mode)
                 if terms["packaging"] is None:
                     del terms["packaging"]
                 link["trade_terms_json"] = terms
