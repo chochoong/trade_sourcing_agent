@@ -228,13 +228,21 @@ python -m sourcing_agent run requests/example.yaml > out.json
         "per_unit_kg": 0.37,         // 카톤 총무게 ÷ 카톤당 수량 (없으면 개당 무게)
         "per_unit_cbm": 0.00168,     // 카톤 부피 ÷ 카톤당 수량 (없으면 개별 포장 부피), ㎥
         "evidence": [{"claim": "Gross weight 0.35kg, 50pcs/carton", "url": "https://..."}]
+      },
+      "price_basis": {               // 가격 기준 (1.4~, 확인한 키만 — 모르는 키는 없음). 공용 DB trade_terms_json.price_basis
+        "currency": "JPY", "low": 21000, "high": 42000, "fx_assumed": 154,
+        "includes_shipping": false,  // 한국까지 배송비 포함 가격이면 true → 4번이 운임을 0으로
+        "includes_tax": false, "preorder": true,
+        "kind": "retail",            // factory / wholesale / retail / resale (AliExpress·eBay 상품 페이지뿐이면 retail)
+        "variant": "4구 LED형",      // 이 단가가 가리키는 상품. DB price_note 에도 "USD … — 4구 LED형" 으로 붙임
+        "evidence": [{"claim": "JPY 2,980 税込 送料別", "url": "https://..."}]
       }
     }
   ]
 }
 ```
 
-모르는 값은 `null` 입니다. 3번 통관·규제 체크는 `request.hs_code` + `specs`, 4번 원가·수익 계산은 `unit_price_usd` + `packaging`(운임 추정), 5번 협상은 `contacts` + `first_questions` 를 쓰면 됩니다.
+모르는 값은 `null` 입니다. 3번 통관·규제 체크는 `request.hs_code` + `specs`, 4번 원가·수익 계산은 `unit_price_usd`(범위의 높은 쪽 USD) + `packaging`(운임 추정) + `price_basis`(배송비 포함 여부·도매/소매·변형), 5번 협상은 `contacts` + `first_questions` 를 쓰면 됩니다.
 
 ## 커스터마이즈
 

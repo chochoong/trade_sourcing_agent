@@ -5,12 +5,13 @@ import anthropic
 import yaml
 
 from .errors import friendly
-from .discover import ships_to_korea
+from .discover import is_retail_listing, ships_to_korea
 from .manual import read_manual
 from .normalize import order_urls, parse_usd_price
 from .paths import PROMPTS
 from .scoring import compute, rubric_text
 from .packaging import normalize_packaging
+from .price_basis import normalize_price_basis
 from .specs import normalize_specs
 
 # 업체를 바꿔도 똑같이 실패할 오류 → 전체 실행을 즉시 중단
@@ -90,6 +91,11 @@ def verify_one(llm, candidate: dict, request: dict, rubric: dict) -> dict:
     price_range = v.get("price_range") or candidate.get("price_range")
 
     result = compute(v, rubric)
+    basis = normalize_price_basis(v.get("price_basis"))
+    if candidate.get("variant") and not (basis or {}).get("variant"):   # 검색 단계에서 적은 변형
+        basis = {**(basis or {}), "variant": str(candidate["variant"])[:80]}
+    if is_retail_listing({"urls": urls}) and not (basis or {}).get("kind"):   # AliExpress·eBay 상품 페이지뿐 → 소매가
+        basis = {**(basis or {}), "kind": "retail"}
     return {
         **candidate,
         **result,
@@ -106,4 +112,5 @@ def verify_one(llm, candidate: dict, request: dict, rubric: dict) -> dict:
         "manual_info_used": bool(manual),
         "specs": normalize_specs(v.get("specs")),   # 제품 사양 (3번 통관·규제 체크용). 모르면 None
         "packaging": normalize_packaging(v.get("packaging")),   # 포장·무게 (4번 운임 추정용). 모르면 None
+        "price_basis": basis,   # 가격 기준: 통화·배송비 포함 여부·공장/도매/소매·어떤 상품인지 (4번 원가 계산용). 모르면 None
     }

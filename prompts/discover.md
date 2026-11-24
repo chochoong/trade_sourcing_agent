@@ -24,6 +24,8 @@
   - API 값(가격·판매 수·평점)은 웹 검색 결과보다 정확하니 그대로 쓰세요.
 - `ships_to_korea`: 상품·스토어 페이지에 해외 발송(「海外発送」「海外配送」「International Shipping」「Worldwide」, eBay 국제 배송·GSP,
   AliExpress 한국 배송 등)이 **확인되면** true, 국내배송만이라고 적혀 있으면 false, 모르면 null. 추측하지 마세요.
+- **한 품목 = 같은 상품**: 요청 품목과 모델·구성·규격이 같은 상품을 찾으세요. 변형(구성 수·사이즈·LED 유무·한정판 등)이
+  여러 개면 요청 품목에 맞는 변형의 가격을 price_range 에 쓰고, 그 변형을 `variant` 에 짧게 적으세요 (예: "2구 기본형").
 - 같은 업체가 여러 플랫폼에 있으면 하나로 합치고 urls 에 모두 넣으세요.
 - urls 에는 **그 업체만의 고유 페이지**만 넣으세요: 스토어 홈(`xxx.en.alibaba.com`), 상품 상세(`alibaba.com/product-detail/...`,
   `aliexpress.com/item/...`, `detail.1688.com/offer/...`), 회사 소개 페이지 등.
@@ -57,6 +59,7 @@
     "certifications": ["FDA", "LFGB"],
     "moq": "500 pcs 또는 null",
     "price_range": "USD 1.8-2.6 또는 null",
+    "variant": "price_range 가 가리키는 상품 (예: 4구 LED형) 또는 null",
     "contacts": {
       "contact_person": "담당자명 또는 null",
       "email": "sales@... 또는 null",

@@ -33,6 +33,16 @@
   판매가·판매 수·평점·상점 평점·판매자 피드백·포장 무게를 확인된 근거로 쓰고 evidence 에 "마켓 API: …"로 적으세요.
   같은 품목의 다른 판매 상품 가격(`price_usd`)과 비교해 이 업체 단가가 지나치게 높거나 낮으면 summary 에 적으세요.
 - price_range: 요청 수량에 해당하는 단가를 확인했으면 `"USD 최저-최고"` 형식으로 적으세요 (위안·엔이면 USD 로 환산하고 원문을 괄호로). 모르면 null.
+- **한 품목 = 같은 상품**: 단가는 요청 품목(product·reference_urls)과 같은 모델·구성·규격의 가격이어야 합니다.
+  업체가 여러 변형(구성 수·사이즈·LED 유무·한정판 등)을 팔면 요청 품목에 맞는 변형의 가격을 적고,
+  맞는 변형이 없으면 가장 가까운 변형의 가격을 적은 뒤 risk_flags 에 "다른 변형: …"으로 적으세요.
+- price_basis (가격 기준, 4번 원가 계산이 씀): price_range 를 확인한 페이지의 조건을 **확인한 값만** 적고, 모르면 null.
+  - currency·low·high: 원래 통화(USD·CNY·JPY 등)와 그 통화의 요청 수량 구간 단가. fx_assumed: USD 로 환산할 때 쓴 환율(1 USD = ?)
+  - includes_shipping: 한국까지 배송비가 단가에 포함(무료배송·送料無料 해외 포함·Free shipping to Korea)이면 true,
+    배송비가 따로 붙으면 false. **중요** — 4번이 운임을 이중으로 더하지 않게 씀. 국내 무료배송만이면 false.
+  - includes_tax: 소비세·VAT 포함가(税込)면 true, 별도(税抜)면 false. preorder: 예약판매(予約·Pre-order)면 true
+  - kind: factory(공장 출고가) / wholesale(도매몰·Ready to Ship 도매가) / retail(소매 판매가) / resale(리셀·프리미엄 가격)
+  - variant: 이 단가가 가리키는 상품을 짧게 (예: "4구 LED형", "M5 30팩 박스"). evidence: 가격 근거 원문과 URL
 - specs (제품 사양, 3번 통관·규제 체크가 씀): 이 업체의 **상품 상세 페이지에서 확인한 사실만** 적으세요.
   - 확실하지 않으면 null. 추측으로 false 를 넣지 마세요 (false 는 "없다"고 확인했을 때만).
   - 모델·옵션마다 사양이 다르면 위험한 쪽을 적으세요 (예: 일반형과 LED·전지형이 있으면 전지형 기준).
@@ -76,6 +86,9 @@
     "materials": [],
     "evidence": [{"claim": "확인한 사양", "url": "https://..."}]
   },
+  "price_basis": {"currency": null, "low": null, "high": null, "fx_assumed": null,
+                  "includes_shipping": null, "includes_tax": null, "preorder": null, "kind": null, "variant": null,
+                  "evidence": [{"claim": "JPY 2,980 税込 送料別", "url": "https://..."}]},
   "packaging": {"unit_weight_kg": null, "unit_size_cm": null, "pcs_per_carton": null,
                 "carton_weight_kg": null, "carton_size_cm": null,
                 "evidence": [{"claim": "Gross weight 0.35kg, 50pcs/carton 60x40x35cm", "url": "https://..."}]}

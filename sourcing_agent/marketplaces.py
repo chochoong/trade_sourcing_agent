@@ -24,6 +24,7 @@ import urllib.request
 from pathlib import Path
 
 from .packaging import normalize_packaging
+from .price_basis import from_market as basis_from_market, merge as merge_basis
 
 ALI_GATEWAY = "https://api-sg.aliexpress.com/sync"
 EBAY_TOKEN_URL = "https://api.ebay.com/identity/v1/oauth2/token"
@@ -322,7 +323,7 @@ def _item_ids(urls):
 
 
 def enrich(result, snapshot):
-    """검증 결과의 상품 페이지가 API로 조회한 상품이면, API 값(포장·무게)을 비어 있는 칸에 채움."""
+    """검증 결과의 상품 페이지가 API로 조회한 상품이면, API 값(포장·무게·가격 기준)을 비어 있는 칸에 채움."""
     if not snapshot or not snapshot.get("listings"):
         return result
     ids = _item_ids(result.get("urls"))
@@ -332,6 +333,7 @@ def enrich(result, snapshot):
         if _item_ids([it.get("url")]) & ids:
             if not result.get("packaging") and it.get("packaging"):
                 result["packaging"] = it["packaging"]
+            result["price_basis"] = merge_basis(result.get("price_basis"), basis_from_market(it, snapshot["source"]))
             result["market_listing"] = {k: it.get(k) for k in ("source", "url", "price_usd", "sold", "rating",
                                                                 "reviews", "store") if it.get(k) is not None}
             result["market_listing"]["source"] = snapshot["source"]

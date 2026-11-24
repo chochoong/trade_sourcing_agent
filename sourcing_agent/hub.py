@@ -242,8 +242,11 @@ def save_results(conn, run_id, product_id, suppliers, report_path, purchase_mode
                 trust=TRUST.get(r.get("grade")),
                 trust_reason=(f"{r.get('total')}점 ({r.get('grade')}) — {r.get('summary') or ''}").strip(" —"),
                 red_flags=_text(r.get("risk_flags")))
+            basis = r.get("price_basis") if isinstance(r.get("price_basis"), dict) else None
             link = {"is_top_pick": int(i < TOP_PICKS), "moq": _text(r.get("moq")),
-                    "price_note": _text(r.get("price_range")),
+                    # 단가 + 어떤 상품의 단가인지 (예: "USD 0.53-0.79 — 4구 LED형"). 4번이 한 품목 안의 다른 변형을 가려냄
+                    "price_note": " — ".join(x for x in [_text(r.get("price_range")), (basis or {}).get("variant")] if x)
+                    or None,
                     # v4: 이 품목 기준 평가 결과 (5번 협상은 first_questions·trade_terms 를 씀)
                     "purchase_mode": purchase_mode, "max_order_qty": max_order_qty,
                     "score": r.get("total"), "grade": r.get("grade") if r.get("grade") in TRUST else None,
@@ -257,11 +260,15 @@ def save_results(conn, run_id, product_id, suppliers, report_path, purchase_mode
             if price:
                 link["unit_price_usd"] = price
             # 포장·무게 → trade_terms_json.packaging (4번 원가 계산이 운임 추정에 씀). 이번에 모르면 예전 값 유지
-            if link["trade_terms_json"] is not None or r.get("packaging"):
+            if link["trade_terms_json"] is not None or r.get("packaging") or basis:
                 terms = dict(link["trade_terms_json"] or {})
                 terms["packaging"] = r.get("packaging") or _old_packaging(conn, product_id, sid, purchase_mode)
                 if terms["packaging"] is None:
                     del terms["packaging"]
+                # 가격 기준 (통화·배송비 포함 여부·공장/도매/소매·변형) → 4번. 가격은 바뀌므로 예전 값은 이어받지 않음
+                terms.pop("price_basis", None)
+                if basis:
+                    terms["price_basis"] = basis
                 link["trade_terms_json"] = terms
             # 제품 사양 (trade_hub v13~, 3번 통관·규제 체크가 읽음). 모르면 저장하지 않음 (예전 값 유지)
             if r.get("specs") and "specs_json" in db.LINK_FIELDS:
