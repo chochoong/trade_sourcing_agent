@@ -37,6 +37,11 @@
   - synthetic_resin_household: 전기 없는 합성수지(플라스틱·TPE·PVC·EVA·고무) 생활용품 / textile_wearable: 섬유 제품이거나 몸에 착용
   - origin_country: 생산국 ISO 2자리 코드 (예: CN, VN). 페이지에 "Place of Origin" 등으로 적힌 경우만
   - materials: 페이지에 적힌 재질 (예: ["ABS", "실리콘"]). evidence: 사양 근거 [{"claim": "리튬 배터리 300mAh", "url": "상품 페이지"}]
+- packaging (포장·무게, 4번 원가 계산이 국제운임 추정에 씀): 상품 상세 페이지의 "Packaging & delivery"·"Package size"·
+  "Gross weight"·"Packing"(装箱数·外箱尺寸·毛重)·商品サイズ·重量 같은 항목에서 **확인한 값만** 적으세요. 모르면 null.
+  - unit_weight_kg: 개당 무게 kg (포장 포함 무게가 있으면 그 값) / unit_size_cm: 개별 포장 크기 [가로, 세로, 높이] cm
+  - pcs_per_carton: 수출 카톤 1개에 든 수량 / carton_weight_kg: 카톤 총무게 / carton_size_cm: 카톤 크기 [가로, 세로, 높이] cm
+  - 단위가 g·lb·mm·inch 면 kg·cm 로 바꾸세요. evidence 에 원문 표기와 URL 을 남기세요.
 - '사람이 확인한 추가 정보'가 있으면 그것을 가장 신뢰도 높은 근거로 사용하세요.
 - 근거 없이 점수를 주지 마세요. 확인 못 한 항목은 0점 처리하고 unverified 에 적으세요.
 - 각 점수는 점수표의 max 를 넘을 수 없습니다.
@@ -63,6 +68,9 @@
               "synthetic_resin_household": null, "textile_wearable": null, "origin_country": null},
     "materials": [],
     "evidence": [{"claim": "확인한 사양", "url": "https://..."}]
-  }
+  },
+  "packaging": {"unit_weight_kg": null, "unit_size_cm": null, "pcs_per_carton": null,
+                "carton_weight_kg": null, "carton_size_cm": null,
+                "evidence": [{"claim": "Gross weight 0.35kg, 50pcs/carton 60x40x35cm", "url": "https://..."}]}
 }
 ```

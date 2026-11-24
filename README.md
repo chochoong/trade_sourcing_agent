@@ -191,7 +191,7 @@ python -m sourcing_agent run requests/example.yaml > out.json
 
 ```jsonc
 {
-  "schema_version": "1.0",          // 1.x = 필드 추가만(하위 호환), 2.0 = 깨지는 변경
+  "schema_version": "1.2",          // 1.x = 필드 추가만(하위 호환), 2.0 = 깨지는 변경
   "agent": "trade_sourcing_agent",
   "mode": "supplier",
   "sourcing_type": "small_batch",   // "retail" / "small_batch" / "oem" — scores 의 항목 key 가 방식별로 다름
@@ -209,13 +209,20 @@ python -m sourcing_agent run requests/example.yaml > out.json
       "specs": {                     // 제품 사양 (1.1~, 상품 페이지에서 확인한 사실만, 모르면 null). 공용 DB product_suppliers.specs_json
         "flags": {"power_source": "battery_lithium", "is_electronic": true, "wireless": true, "food_contact": null, "...": null},
         "materials": ["ABS"], "evidence": [{"claim": "리튬 배터리 내장", "url": "https://..."}]
+      },
+      "packaging": {                 // 포장·무게 (1.2~, 페이지에서 확인한 값만, 모르면 null). 공용 DB trade_terms_json.packaging
+        "unit_weight_kg": 0.35, "unit_size_cm": [30, 10, 5], "pcs_per_carton": 50,
+        "carton_weight_kg": 18.5, "carton_size_cm": [60, 40, 35],
+        "per_unit_kg": 0.37,         // 카톤 총무게 ÷ 카톤당 수량 (없으면 개당 무게)
+        "per_unit_cbm": 0.00168,     // 카톤 부피 ÷ 카톤당 수량 (없으면 개별 포장 부피), ㎥
+        "evidence": [{"claim": "Gross weight 0.35kg, 50pcs/carton", "url": "https://..."}]
       }
     }
   ]
 }
 ```
 
-모르는 값은 `null` 입니다. 3번 통관·규제 체크는 `request.hs_code` + `specs`, 4번 원가·수익 계산은 `unit_price_usd`, 5번 협상은 `contacts` + `first_questions` 를 쓰면 됩니다.
+모르는 값은 `null` 입니다. 3번 통관·규제 체크는 `request.hs_code` + `specs`, 4번 원가·수익 계산은 `unit_price_usd` + `packaging`(운임 추정), 5번 협상은 `contacts` + `first_questions` 를 쓰면 됩니다.
 
 ## 커스터마이즈
 

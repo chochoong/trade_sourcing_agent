@@ -161,6 +161,17 @@ def _list(v):
     return v if isinstance(v, list) else ([] if v is None else [v])
 
 
+def _old_packaging(conn, product_id, supplier_id):
+    """예전 조사에서 저장한 포장·무게 (같은 품목·공급처). 없으면 None."""
+    row = conn.execute("SELECT trade_terms_json FROM product_suppliers WHERE product_id = ? AND supplier_id = ?",
+                       (product_id, supplier_id)).fetchone()
+    try:
+        old = json.loads(row["trade_terms_json"]) if row and row["trade_terms_json"] else {}
+    except (TypeError, ValueError):
+        return None
+    return old.get("packaging") if isinstance(old, dict) else None
+
+
 def save_results(conn, run_id, product_id, suppliers, report_path, purchase_mode=None, max_order_qty=None):
     """results.json의 suppliers → suppliers + product_suppliers (+ 사람 검토 할 일).
 
@@ -204,6 +215,13 @@ def save_results(conn, run_id, product_id, suppliers, report_path, purchase_mode
             price = r.get("unit_price_usd") or parse_usd_price(r.get("price_range"))
             if price:
                 link["unit_price_usd"] = price
+            # 포장·무게 → trade_terms_json.packaging (4번 원가 계산이 운임 추정에 씀). 이번에 모르면 예전 값 유지
+            if link["trade_terms_json"] is not None or r.get("packaging"):
+                terms = dict(link["trade_terms_json"] or {})
+                terms["packaging"] = r.get("packaging") or _old_packaging(conn, product_id, sid)
+                if terms["packaging"] is None:
+                    del terms["packaging"]
+                link["trade_terms_json"] = terms
             # 제품 사양 (trade_hub v13~, 3번 통관·규제 체크가 읽음). 모르면 저장하지 않음 (예전 값 유지)
             if r.get("specs") and "specs_json" in db.LINK_FIELDS:
                 link["specs_json"] = r["specs"]
