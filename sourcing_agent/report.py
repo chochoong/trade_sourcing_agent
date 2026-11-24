@@ -76,7 +76,7 @@ def write_reports(results: list[dict], request: dict, out_dir, channels: list[di
     csv_path = out_dir / "results.csv"
     cols = ["순위", "업체명", "국가", "유형", "업력", "인증", "MOQ", "단가대",
             "총점", "등급", "리스크", "미확인", "수동정보",
-            "담당자", "이메일", "전화", "메신저", "리드타임", "결제조건", "샘플", "포장·무게", "링크"]
+            "담당자", "이메일", "전화", "메신저", "리드타임", "결제조건", "샘플", "한국 배송", "포장·무게", "링크"]
     with open(csv_path, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)
         w.writerow(cols)
@@ -88,7 +88,7 @@ def write_reports(results: list[dict], request: dict, out_dir, channels: list[di
                         _j(r.get("risk_flags")), _j(r.get("unverified")),
                         "O" if r.get("manual_info_used") else "",
                         c.get("contact_person"), c.get("email"), c.get("phone"), c.get("messenger"),
-                        t.get("lead_time"), t.get("payment_terms"), t.get("sample"), packaging_text(r.get("packaging")),
+                        t.get("lead_time"), t.get("payment_terms"), t.get("sample"), _korea_ship(t), packaging_text(r.get("packaging")),
                         _j(r.get("urls"))])
 
     rubric = _rubric(request)
@@ -149,6 +149,13 @@ def _request_lines(request):
     return [(k, _j(v)) for k, v in rows if v]
 
 
+def _korea_ship(t):
+    """trade_terms.ships_to_korea / korea_shipping → '직배송 가능 (EMS 2,000엔)' / '국내배송만 — 배송대행지 필요'."""
+    v, how = t.get("ships_to_korea"), t.get("korea_shipping")
+    head = "직배송 가능" if v is True else "국내배송만 — 배송대행지 필요" if v is False else ("" if not how else "확인 필요")
+    return f"{head} ({how})" if head and how else head or _j(how)
+
+
 def _market_line(m):
     """공식 마켓 API 요약 한 줄 (AliExpress 2,345개 · $2.5~$9.9, 중간 $4.2). 없으면 None."""
     if not isinstance(m, dict) or not m.get("price_usd"):
@@ -166,6 +173,7 @@ def _facts(r):
         ("인증", _j(r.get("certifications"))), ("플랫폼 배지", _j(r.get("platform_badges"))),
         ("연락처", _contact_line(c) if any(c.get(k) for k in c) else ""),
         ("리드타임", _j(t.get("lead_time"))), ("결제조건", _j(t.get("payment_terms"))), ("샘플", _j(t.get("sample"))),
+        ("한국 배송", _korea_ship(t)),
         ("포장·무게", packaging_text(r.get("packaging"))),
     ]
     return [(k, v) for k, v in rows if v]

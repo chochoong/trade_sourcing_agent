@@ -115,6 +115,11 @@ python -m sourcing_agent from-db 23 --type small_batch --country Japan   # 일�
 
 - 일본 쇼핑몰은 대부분 해외 배송이 안 돼 배송대행지가 필요하고, 도매몰은 일본 사업자만 거래하는 판매자가 많습니다.
   그래서 사이트 고유 점수의 '한국 배송'이 낮게 잡혀 있습니다 (`config/channels.yaml`).
+- **해외 직배송 판매자 우선**: 「海外発送」「海外配送 対応」「international shipping」 검색, 메이커 공식몰의 해외 판매 페이지,
+  Amazon.co.jp 해외 발송 상품 등을 먼저 찾고 후보의 절반 이상을 해외 직배송 판매자로 채우게 합니다.
+  확인 결과는 `trade_terms.ships_to_korea`(true / false / null)·`korea_shipping` 에 남고,
+  소매·소량 사입이면 1차 필터에서 직배송 +3 / 국내배송만 −1 (빼지는 않음), 점수표의 한국 배송 항목도 직배송이 만점입니다.
+  리포트·CSV 에는 '한국 배송' 줄로 나옵니다.
 - 구매대행(retail)은 buyagent 가 라쿠텐·Yahoo!쇼핑 최저가를 직접 감시하므로, 2번은 정품 판매처·공식몰 확인 위주로 쓰면 됩니다.
 
 ## 구매 사이트 순위
@@ -207,7 +212,9 @@ python -m sourcing_agent run requests/example.yaml > out.json
       "rank": 1, "name": "...", "country": "China", "company_type": "manufacturer",
       "urls": ["..."], "website": "...", "certifications": ["FDA"], "moq": "...", "price_range": "...",
       "contacts":    { "contact_person", "email", "phone", "messenger", "address" },
-      "trade_terms": { "lead_time", "payment_terms", "sample", "export_markets" },
+      "trade_terms": { "lead_time", "payment_terms", "sample", "export_markets",
+                       "ships_to_korea",   // true 한국 직배송 / false 국내배송만(배송대행지 필요) / null 모름
+                       "korea_shipping" }, // 방법·배송비·기간 (예: "EMS 2,000엔, 7~10일")
       "scores": { ... }, "risk_penalty": 0, "total": 72.0, "grade": "B",
       "risk_flags": [], "unverified": [], "evidence": [{ "claim", "url" }],
       "summary": "...", "first_questions": ["..."], "manual_info_used": false,

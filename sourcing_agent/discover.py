@@ -50,6 +50,14 @@ def parse_qty(v) -> int | None:
     return int(m.group().replace(",", "")) if m else None
 
 
+def ships_to_korea(v):
+    """한국 직배송 여부: True / False / None(모름). 문자열 "true"·"가능" 등도 받음."""
+    if isinstance(v, bool):
+        return v
+    s = str(v or "").strip().lower()
+    return True if s in ("true", "yes", "y", "가능") else False if s in ("false", "no", "n", "불가") else None
+
+
 def prefilter(candidates: list[dict], request: dict) -> list[dict]:
     """LLM 없이 규칙 기반으로 후보를 추려 검증 비용을 아낌."""
     required = {str(c).lower() for c in _as_list(request.get("required_certs"))}
@@ -72,6 +80,11 @@ def prefilter(candidates: list[dict], request: dict) -> list[dict]:
         cand_moq = parse_qty(c.get("moq"))
         if max_qty and cand_moq is not None:
             s += 4 if cand_moq <= max_qty else -4
+        # 낱개·소량 구매는 한국 직배송이 되면 배송대행지 요금·시간이 안 듦 → 우선 (국내배송만이면 약간 뒤로, 빼지는 않음)
+        if request.get("sourcing_type") in ("retail", "small_batch"):
+            ship = ships_to_korea((c.get("trade_terms") or {}).get("ships_to_korea")
+                                  if isinstance(c.get("trade_terms"), dict) else None)
+            s += 3 if ship is True else -1 if ship is False else 0
         return s
 
     ranked = sorted(candidates, key=pre_score, reverse=True)

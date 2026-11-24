@@ -5,6 +5,7 @@ import anthropic
 import yaml
 
 from .errors import friendly
+from .discover import ships_to_korea
 from .manual import read_manual
 from .normalize import order_urls, parse_usd_price
 from .paths import PROMPTS
@@ -29,7 +30,7 @@ def _as_list(v) -> list:
 
 
 CONTACT_KEYS = ("contact_person", "email", "phone", "messenger", "address")
-TRADE_TERM_KEYS = ("lead_time", "payment_terms", "sample", "export_markets")
+TRADE_TERM_KEYS = ("lead_time", "payment_terms", "sample", "export_markets", "ships_to_korea", "korea_shipping")
 
 
 def _merge(keys, found, verified) -> dict:
@@ -40,6 +41,8 @@ def _merge(keys, found, verified) -> dict:
     # export_markets 는 항상 리스트로 (다음 단계 에이전트가 형식을 믿고 읽을 수 있게)
     if "export_markets" in merged and merged["export_markets"] is not None:
         merged["export_markets"] = [str(x) for x in _as_list(merged["export_markets"])]
+    if "ships_to_korea" in merged:   # true / false / null 만 (문자열 "true" 도 받음, 그 밖은 모름)
+        merged["ships_to_korea"] = ships_to_korea(merged["ships_to_korea"])
     return merged
 
 

@@ -22,6 +22,8 @@
     소매가는 도매 단가보다 비싸서, 소매 판매자만으로는 `소량 구매 단가 상한` 을 맞추기 어렵습니다.
   - 구매 방식이 oem 이면 후보로 넣지 말고, `price_usd`(소매 판매가 범위)를 공장 단가가 적정한지 보는 기준으로만 쓰세요.
   - API 값(가격·판매 수·평점)은 웹 검색 결과보다 정확하니 그대로 쓰세요.
+- `ships_to_korea`: 상품·스토어 페이지에 해외 발송(「海外発送」「海外配送」「International Shipping」「Worldwide」, eBay 국제 배송·GSP,
+  AliExpress 한국 배송 등)이 **확인되면** true, 국내배송만이라고 적혀 있으면 false, 모르면 null. 추측하지 마세요.
 - 같은 업체가 여러 플랫폼에 있으면 하나로 합치고 urls 에 모두 넣으세요.
 - urls 에는 **그 업체만의 고유 페이지**만 넣으세요: 스토어 홈(`xxx.en.alibaba.com`), 상품 상세(`alibaba.com/product-detail/...`,
   `aliexpress.com/item/...`, `detail.1688.com/offer/...`), 회사 소개 페이지 등.
@@ -66,7 +68,9 @@
       "lead_time": "25-35 days 또는 null",
       "payment_terms": "T/T 30% deposit 등 또는 null",
       "sample": "무료/유료 샘플 정책 또는 null",
-      "export_markets": ["Korea", "Japan"]
+      "export_markets": ["Korea", "Japan"],
+      "ships_to_korea": "true(판매자가 한국으로 직접 발송) | false(현지 국내배송만 → 배송대행지 필요) | null(미확인)",
+      "korea_shipping": "한국 배송 방법·배송비·기간 (예: EMS 2,000엔·7일) 또는 null"
     },
     "notes": "특이사항 한 줄"
   }
