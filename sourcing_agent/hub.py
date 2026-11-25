@@ -151,8 +151,60 @@ def price_ceiling(p, sourcing_type="small_batch"):
                            f"목표 마진 {margin:g}%·관세 {duty:g}%·개당 운임 ${freight:g} 를 뺀 추정값 (이 값 이하면 마진이 남음)")
 
 
-def build_request(conn, p, sourcing_type="small_batch", max_order_qty=None, country=None):
-    """DB 품목 → 소싱 조건 dict (YAML 요청 파일과 같은 형식). country 없으면 1번 추천 국가."""
+def found_suppliers(conn, product_id, purchase_mode):
+    """이 품목을 같은 구매 방식으로 조사해 저장한 공급처: [(업체명, 개당 단가 USD 또는 None)]."""
+    rows = conn.execute("SELECT s.company, ps.unit_price_usd FROM product_suppliers ps"
+                        " JOIN suppliers s ON s.id = ps.supplier_id"
+                        " WHERE ps.product_id = ? AND ps.purchase_mode IS ?", (product_id, purchase_mode)).fetchall()
+    return [(r["company"], r["unit_price_usd"]) for r in rows]
+
+
+def apply_options(conn, p, req, options):
+    """다시 찾기 옵션 → 소싱 조건에 반영.
+
+    options: {"max_price_usd": 20, "cheaper": True, "new_only": True, "note": "무브랜드 OEM 위주"}
+      max_price_usd  개당 단가 상한 (USD). 이보다 비싸다고 확인된 후보는 1차 필터에서 뺌
+      cheaper        지금까지 찾은 (같은 구매 방식) 최저 단가보다 싼 곳만 — 상한 = 그 최저 단가 (max_price_usd 와 함께면 낮은 쪽)
+      new_only       이미 찾은 공급처는 빼고 새 곳만
+      note           사람이 적은 추가 조건 (사양 완화, 브랜드 제외 등) — 검색·검증 모두 최우선으로 따름
+    """
+    options = {k: v for k, v in (options or {}).items() if v not in (None, "", False)}
+    if not options:
+        return req
+    found = found_suppliers(conn, p["id"], req.get("sourcing_type"))
+    lines, applied = [], {}
+    cap = float(options["max_price_usd"]) if options.get("max_price_usd") else None
+    if options.get("cheaper"):
+        prices = [x for _, x in found if isinstance(x, (int, float)) and x > 0]
+        if prices:
+            cap = min([cap, min(prices)] if cap else [min(prices)])
+            applied["cheaper_than_usd"] = min(prices)
+            lines.append(f"- 지금까지 찾은 공급처 최저 단가는 USD {min(prices):g} 입니다. **이보다 싼 곳**을 찾으세요 "
+                         "(같은 상품 기준 — 사양을 낮춘 다른 물건으로 싸게 맞추지 말 것).")
+        else:
+            lines.append("- 더 싼 곳 찾기: 지금까지 단가가 확인된 공급처가 없어 상한 없이 가장 싼 곳 위주로 찾으세요.")
+    if cap:
+        req["max_unit_price_usd"] = round(cap, 2)
+        applied["max_unit_price_usd"] = req["max_unit_price_usd"]
+        lines.append(f"- 개당 단가 상한: USD {cap:g}. 이 값 이하로 살 수 있는 곳만 후보에 넣고, 싼 순서로 우선 찾으세요. "
+                     "1688 공장 직판·Alibaba 제조사·무브랜드(OEM) 상품처럼 단가가 낮은 경로를 넓게 검색하세요.")
+    if options.get("new_only") and found:
+        req["exclude_suppliers"] = sorted({n for n, _ in found if n})
+        applied["exclude_suppliers"] = len(req["exclude_suppliers"])
+        lines.append("- 이미 조사한 공급처(exclude_suppliers)는 후보에 넣지 말고 **새 공급처**만 찾으세요.")
+    if options.get("note"):
+        note = str(options["note"]).strip()[:500]
+        applied["note"] = note
+        lines.append(f"- 사람이 준 추가 조건: {note}")
+    if lines:
+        req["notes"] = "\n".join(["## 다시 찾기 조건 (최우선)", *lines] + ([req["notes"]] if req.get("notes") else []))
+        req["rerun_options"] = applied
+    return req
+
+
+def build_request(conn, p, sourcing_type="small_batch", max_order_qty=None, country=None, options=None):
+    """DB 품목 → 소싱 조건 dict (YAML 요청 파일과 같은 형식). country 없으면 1번 추천 국가.
+    options: 다시 찾기 옵션 (apply_options 참고)."""
     country = product_country(p, country)
     s = conn.execute("SELECT est_fob_usd FROM product_scores WHERE product_id = ? ORDER BY id DESC LIMIT 1",
                      (p["id"],)).fetchone()
@@ -193,12 +245,13 @@ def build_request(conn, p, sourcing_type="small_batch", max_order_qty=None, coun
         "prefer_manufacturer": sourcing_type == "oem",
         "notes": "\n".join(notes) or None,
         "min_candidates": 15,
-        "shortlist_size": 5,
+        "shortlist_size": 8,
         "trade_hub_product_id": p["id"],
     }
     if max_order_qty:
         req["max_order_qty"] = max_order_qty
-    return {k: v for k, v in req.items() if v is not None}
+    req = {k: v for k, v in req.items() if v is not None}
+    return apply_options(conn, p, req, options)
 
 
 # DB 설계(schema.sql)의 업체 유형 표기: 제조사 / 무역상 / 미확인
@@ -359,7 +412,7 @@ def _readable_errors():
 
 
 def run_from_db(ids=None, sourcing_type="small_batch", max_order_qty=None, dry_run=False, log=log_stderr,
-                to_buyagent=True, country=None):
+                to_buyagent=True, country=None, options=None):
     """to_buyagent: retail 조사면 끝난 뒤 결과를 구매대행 모니터(buyagent) 카탈로그에 자동 추가."""
     load_rubric(sourcing_type)  # 없는 구매 방식이면 DB를 열기 전에 바로 오류
     if max_order_qty is None:
@@ -370,12 +423,14 @@ def run_from_db(ids=None, sourcing_type="small_batch", max_order_qty=None, dry_r
     if not products:
         log("처리할 품목이 없습니다 (`trade_hub select <번호>`로 넘긴 품목 중 아직 조사하지 않은 것).")
         return {"processed": []}
-    requests = [(p, build_request(conn, p, sourcing_type, max_order_qty, country)) for p in products]
+    requests = [(p, build_request(conn, p, sourcing_type, max_order_qty, country, options))
+                for p in products]
     if dry_run:
         return {"dry_run": [r for _, r in requests]}
 
     done = []
-    args = {"ids": ids, "sourcing_type": sourcing_type, "max_order_qty": max_order_qty, "country": country}
+    args = {"ids": ids, "sourcing_type": sourcing_type, "max_order_qty": max_order_qty, "country": country,
+            "options": {k: v for k, v in (options or {}).items() if v not in (None, "", False)} or None}
     with db.agent_run(conn, AGENT, provider="anthropic", model=LLM().model, args=args) as run, \
             _readable_errors():
         for p, req in requests:

@@ -56,6 +56,11 @@ def main() -> int:
                    help="공급 국가. 생략하면 1번이 품목마다 추천한 국가(DB source_country), 그것도 없으면 China. "
                         "Japan=일본어 검색·일본 사이트, USA=eBay·Amazon.com·미국 제조사")
     s.add_argument("--no-buyagent", action="store_true", help="retail 조사 후 buyagent 로 자동 내보내기 하지 않음")
+    # 다시 찾기 옵션 (대시보드 '다시 찾기'에서 넘김)
+    s.add_argument("--max-price", type=float, dest="max_price_usd", help="개당 단가 상한 USD (이보다 비싼 후보 제외)")
+    s.add_argument("--cheaper", action="store_true", help="지금까지 찾은 같은 구매 방식 공급처의 최저 단가보다 싼 곳만")
+    s.add_argument("--new-only", action="store_true", help="이미 찾은 공급처는 빼고 새 곳만")
+    s.add_argument("--note", help="추가 조건 (예: '무브랜드 OEM 위주', '개스킷 없어도 됨')")
     a = p.parse_args()
 
     try:
@@ -65,7 +70,9 @@ def main() -> int:
 
         if a.cmd == "from-db":
             from .hub import run_from_db   # trade_hub 패키지가 필요한 명령만 늦게 불러옴
-            out = run_from_db(a.ids, a.sourcing_type, a.max_order_qty, a.dry_run, to_buyagent=not a.no_buyagent, country=a.country)
+            out = run_from_db(a.ids, a.sourcing_type, a.max_order_qty, a.dry_run, to_buyagent=not a.no_buyagent, country=a.country,
+                              options={"max_price_usd": a.max_price_usd, "cheaper": a.cheaper,
+                                       "new_only": a.new_only, "note": a.note})
         elif a.cmd == "export-buyagent":
             from .buyagent_export import export
             out = export(a.run_dir, a.category, a.buyagent, a.write, a.allow_non_retail, a.min_score)

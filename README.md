@@ -94,6 +94,25 @@ python -m sourcing_agent from-db 17 --type oem --max-qty 100   # 특정 품목�
   `product_channels`(구매 사이트 순위)에 기록되고,
   `tasks`에 "공급처 검토" 할 일이 생깁니다. 품목 단계(stage)는 바꾸지 않습니다.
 - 한 번 조사한 품목은 공급처를 못 찾았어도 자동으로 다시 돌리지 않습니다. 다시 하려면 번호를 지정하세요.
+- 상세 검증은 후보 중 1차 필터를 통과한 **8곳**까지 합니다 (`shortlist_size`).
+
+### 다시 찾기 옵션
+
+번호를 지정해 다시 찾을 때 조건을 덧붙일 수 있습니다 (세 구매 방식 모두). 옵션은 소싱 조건의 맨 앞 "다시 찾기 조건"과
+`max_unit_price_usd`·`exclude_suppliers`·`rerun_options` 로 들어가고, 1차 필터도 따릅니다.
+
+```bash
+python -m sourcing_agent from-db 21 --type oem --cheaper                 # 지금까지 찾은 최저 단가보다 싼 곳만
+python -m sourcing_agent from-db 21 --type oem --max-price 25            # 개당 USD 25 이하만
+python -m sourcing_agent from-db 21 --type small_batch --new-only        # 이미 찾은 공급처 빼고 새 곳만
+python -m sourcing_agent from-db 21 --type oem --cheaper --new-only --note "무브랜드 OEM 위주"
+```
+
+- `--cheaper`: 같은 구매 방식으로 저장된 공급처의 `unit_price_usd`(범위의 높은 값) 중 최저값이 상한. `--max-price` 와 함께면 낮은 쪽.
+  단가가 저장된 곳이 없으면 상한 없이 싼 곳 위주로 찾습니다.
+- 상한보다 비싸다고 확인된 후보는 1차 필터에서 빠지고, 가격을 모르는 후보는 남기되 뒤로 밀립니다.
+- `--new-only`: 같은 구매 방식으로 이미 저장된 업체 이름과 같은 후보를 뺍니다 (Co., Ltd.·괄호 설명은 무시하고 비교).
+- `--note`: 사양 완화·브랜드 제외 같은 추가 조건. 사양을 낮춘 다른 물건은 note 로 허락했을 때만 후보에 넣습니다.
 - 공용 DB 위치는 환경변수 `TRADE_DB`(없으면 `../trade_hub/data/trade.db`).
 
 ## 일본 공급처 발굴

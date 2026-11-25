@@ -50,6 +50,19 @@ def parse_qty(v) -> int | None:
     return int(m.group().replace(",", "")) if m else None
 
 
+def _name_key(name):
+    """'Shenzhen AJAZZ Co., Ltd. (1688 store)' → 'shenzhenajazz' 처럼 비교용 (괄호 설명·Co·Ltd 등 제거)."""
+    s = re.sub(r"\(.*?\)", "", str(name or "").lower())
+    s = re.sub(r"\b(co|ltd|limited|inc|llc|corp|company|store|official)\b", "", s)
+    return re.sub(r"[^0-9a-z가-힣一-鿿]", "", s)
+
+
+def candidate_price(c):
+    """후보의 개당 단가 (USD, 범위면 낮은 값 — 상한 비교용). 모르면 None."""
+    m = re.search(r"(?:USD|US\$|\$)\s*(\d+(?:\.\d+)?)", str(c.get("price_range") or ""))
+    return float(m.group(1)) if m else None
+
+
 def ships_to_korea(v):
     """한국 직배송 여부: True / False / None(모름). 문자열 "true"·"가능" 등도 받음."""
     if isinstance(v, bool):
@@ -87,7 +100,22 @@ def prefilter(candidates: list[dict], request: dict) -> list[dict]:
             s += 3 if ship is True else -1 if ship is False else 0
         return s
 
-    ranked = sorted(candidates, key=pre_score, reverse=True)
+    # 다시 찾기 옵션: 이미 찾은 공급처 제외 / 단가 상한보다 비싸다고 확인된 후보 제외 (가격 모르면 남기되 뒤로)
+    exclude = {_name_key(n) for n in _as_list(request.get("exclude_suppliers"))}
+    cap = request.get("max_unit_price_usd")
+    if exclude:
+        candidates = [c for c in candidates if _name_key(c.get("name")) not in exclude]
+    if cap:
+        candidates = [c for c in candidates if (candidate_price(c) or 0) <= cap]
+
+    def ranked_score(c):
+        s = pre_score(c)
+        if cap:   # 상한 이하로 확인된 곳 우선, 싼 곳일수록 조금 더
+            price = candidate_price(c)
+            s += (4 + 2 * (1 - price / cap)) if price else -2
+        return s
+
+    ranked = sorted(candidates, key=ranked_score, reverse=True)
     size = request.get("shortlist_size") or 10
     if request.get("sourcing_type") != "small_batch":
         return ranked[:size]

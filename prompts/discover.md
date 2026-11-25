@@ -5,6 +5,10 @@
 - 로그인, 캡차, 봇 차단을 우회하려 하지 마세요. 알리바바·1688 상세 정보가 안 보이면 해당 필드를 null 로 두면 됩니다.
 - 소싱 조건의 `platforms`, `preferred_countries`, `notes` 를 최우선으로 따르세요.
   notes 에서 제외하라고 한 플랫폼·상품은 검색하지도, 후보에 넣지도 마세요.
+- 소싱 조건에 다시 찾기 조건(`max_unit_price_usd`, `exclude_suppliers`, notes 의 "다시 찾기 조건")이 있으면 최우선으로 따르세요.
+  - `max_unit_price_usd`: 같은 상품을 이 단가 이하로 살 수 있는 곳만 후보에 넣으세요. 단가가 더 비싼 곳은 넣지 마세요.
+    싸게 맞추려고 사양이 다른 물건(유선형, 다른 배열 등)을 넣지 마세요 — 사람이 notes 에서 사양 완화를 허락한 경우만 예외.
+  - `exclude_suppliers`: 이미 조사한 업체입니다. 같은 업체(다른 플랫폼 스토어 포함)는 후보에 넣지 마세요.
 - `site:` 검색 연산자와 현지어 검색어를 적극 활용하세요.
   (예: 중국 공산품 → `site:alibaba.com`, `site:made-in-china.com`, `site:1688.com`(중문) /
   일본 → 일본어 검색어, `site:netsea.jp`, `site:superdelivery.com` /
