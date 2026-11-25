@@ -191,6 +191,13 @@ def apply_options(conn, p, req, options):
                          "**이보다 싼 곳**을 찾으세요 (같은 상품 기준 — 사양을 낮춘 다른 물건으로 싸게 맞추지 말 것).")
         else:
             lines.append("- 더 싼 곳 찾기: 지금까지 단가가 확인된 공급처가 없어 상한 없이 가장 싼 곳 위주로 찾으세요.")
+    margin_cap = req.get("price_ceiling_usd")   # 소량 사입: 판매가에서 역산한 마진 상한 (USD)
+    if caps and margin_cap and min(caps) > margin_cap:
+        warn = (f"넣은 상한(약 {fx.usd_to_krw(min(caps)):,.0f}원)이 국내 판매가로 계산한 마진 상한 "
+                f"약 {fx.usd_to_krw(margin_cap):,.0f}원 (USD {margin_cap:g})보다 높아 마진 상한을 씀")
+        applied["cap_warning"] = warn
+        log_stderr(f"  ⚠ {warn}")
+        caps.append(margin_cap)
     if caps:
         usd = min(caps)
         krw = fx.usd_to_krw(usd)
@@ -310,13 +317,33 @@ def _old_packaging(conn, product_id, supplier_id, purchase_mode=None):
     return old.get("packaging") if isinstance(old, dict) else None
 
 
-def save_results(conn, run_id, product_id, suppliers, report_path, purchase_mode=None, max_order_qty=None):
+def rerank_top_picks(conn, product_id, purchase_mode, supplier_ids=None):
+    """추천 표시(is_top_pick)를 점수 순 상위 TOP_PICKS 곳으로 다시 매김.
+    supplier_ids 를 주면 그 공급처들 중에서만 고름 (없으면 이 품목·구매 방식의 모든 공급처). 반환: 추천한 공급처 id."""
+    rows = conn.execute("SELECT id, supplier_id FROM product_suppliers WHERE product_id = ? AND purchase_mode IS ?"
+                        " ORDER BY COALESCE(score, -1) DESC, updated_at DESC", (product_id, purchase_mode)).fetchall()
+    if supplier_ids is not None:
+        rows = [r for r in rows if r["supplier_id"] in set(supplier_ids)]
+    top = [r["id"] for r in rows[:TOP_PICKS]]
+    conn.execute("UPDATE product_suppliers SET is_top_pick = 0 WHERE product_id = ? AND purchase_mode IS ?",
+                 (product_id, purchase_mode))
+    conn.executemany("UPDATE product_suppliers SET is_top_pick = 1 WHERE id = ?", [(i,) for i in top])
+    return [r["supplier_id"] for r in rows[:TOP_PICKS]]
+
+
+def save_results(conn, run_id, product_id, suppliers, report_path, purchase_mode=None, max_order_qty=None,
+                 merge_top_picks=False):
     """results.json의 suppliers → suppliers + product_suppliers (+ 사람 검토 할 일).
 
     purchase_mode·max_order_qty: 조사 때 구매 방식(retail / small_batch / oem)과 첫 구매 최대 수량
     — 대시보드가 MOQ 배지(소량 OK / 초과 / 미확인)의 기준으로 씀.
+    merge_top_picks: '새 공급처만' 다시 찾기 — 예전 추천 + 이번 공급처를 합쳐 점수 순 상위 3곳을 추천
+    (기본은 이번 실행의 상위 3곳만).
     """
     with conn:
+        prev_picks = [r["supplier_id"] for r in conn.execute(
+            "SELECT supplier_id FROM product_suppliers WHERE product_id = ? AND is_top_pick = 1 AND purchase_mode IS ?",
+            (product_id, purchase_mode))] if merge_top_picks else []
         # 같은 구매 방식으로 다시 조사하면 예전 실행의 추천 표시를 지움 → 추천 = 최신 실행의 상위 3곳만.
         # (3번이 추천 중에서 대표 공급처를 고르므로, 쌓이면 사양 없는 예전 업체가 대표가 됨)
         # 이번에 하나도 못 찾았으면 예전 추천을 그대로 둠. 사람이 고른 selected 는 건드리지 않음.
@@ -374,6 +401,10 @@ def save_results(conn, run_id, product_id, suppliers, report_path, purchase_mode
             if r.get("quality") and "quality_json" in db.LINK_FIELDS:
                 link["quality_json"] = r["quality"]
             db.link_supplier(conn, product_id, sid, run_id, **link)
+            if merge_top_picks:
+                prev_picks.append(sid)
+        if merge_top_picks and suppliers:
+            rerank_top_picks(conn, product_id, purchase_mode, prev_picks)
         name = conn.execute("SELECT name FROM products WHERE id = ?", (product_id,)).fetchone()["name"]
         n = len(suppliers)
         conn.execute("INSERT INTO product_events (product_id, run_id, from_stage, to_stage, note)"
@@ -460,7 +491,8 @@ def run_from_db(ids=None, sourcing_type="small_batch", max_order_qty=None, dry_r
             report = v["files"].get("html") or v["files"]["markdown"]
             n = save_results(conn, run.id, p["id"], payload["suppliers"], report,
                              purchase_mode=payload.get("sourcing_type") or sourcing_type,
-                             max_order_qty=parse_qty((payload.get("request") or {}).get("max_order_qty")))
+                             max_order_qty=parse_qty((payload.get("request") or {}).get("max_order_qty")),
+                             merge_top_picks=bool(req.get("exclude_suppliers")))
             # 구매 사이트 순위: results.json 의 전체 channels (run_verify 반환값의 상위 3개 요약은 단가·장단점이 없음)
             with conn:
                 nc = db.save_channels(conn, p["id"], run.id, payload.get("channels"),

@@ -81,6 +81,32 @@ class RerunOptionsTest(unittest.TestCase):
         out = prefilter(cs, {"sourcing_type": "oem", "max_unit_price_usd": 26, "exclude_suppliers": ["Old A Co., Ltd."]})
         self.assertEqual([c["name"] for c in out], ["New 4", "New 2", "New 3"])
 
+    def picks(self, mode="oem"):
+        return {r["company"] for r in self.conn.execute(
+            "SELECT s.company FROM product_suppliers ps JOIN suppliers s ON s.id = ps.supplier_id"
+            " WHERE ps.product_id = ? AND ps.purchase_mode = ? AND ps.is_top_pick = 1", (self.pid, mode))}
+
+    def test_new_only_merges_top_picks(self):
+        new = [{"name": n, "country": "China", "total": t, "grade": "D"} for n, t in (("N1", 38), ("N2", 30), ("N3", 20))]
+        hub.save_results(self.conn, None, self.pid, new, "r.md", purchase_mode="oem", merge_top_picks=True)
+        self.assertEqual(self.picks(), {"Old A Co., Ltd.", "Old B", "N1"})
+
+    def test_normal_rerun_uses_latest_only(self):
+        new = [{"name": n, "country": "China", "total": t, "grade": "D"} for n, t in (("N1", 38), ("N2", 30), ("N3", 20))]
+        hub.save_results(self.conn, None, self.pid, new, "r.md", purchase_mode="oem")
+        self.assertEqual(self.picks(), {"N1", "N2", "N3"})
+
+    def test_small_batch_cap_above_margin_ceiling(self):
+        with self.conn:
+            self.conn.execute("UPDATE products SET est_retail_krw = 13980 WHERE id = ?", (self.pid,))
+        p = self.conn.execute("SELECT * FROM products WHERE id = ?", (self.pid,)).fetchone()
+        r = hub.build_request(self.conn, p, "small_batch", options={"max_price_krw": 50000})
+        self.assertEqual(r["max_unit_price_usd"], r["price_ceiling_usd"])
+        self.assertIn("마진 상한", r["rerun_options"]["cap_warning"])
+        low = hub.build_request(self.conn, p, "small_batch", options={"max_price_krw": 3000})
+        self.assertNotIn("cap_warning", low["rerun_options"])
+        self.assertLess(low["max_unit_price_usd"], low["price_ceiling_usd"])
+
 
 if __name__ == "__main__":
     unittest.main()
