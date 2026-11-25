@@ -43,6 +43,8 @@
   - includes_tax: **한국 관세·부가세까지 포함된 가격(DDP, "관부가세 포함"·"Duties & taxes included to Korea")일 때만** true.
     판매국 세금(일본 소비세 税込·중국 增值税·미국 sales tax)만 포함된 경우는 null 로 두세요. preorder: 예약판매(予約·Pre-order)면 true
   - kind: factory(공장 출고가) / wholesale(도매몰·Ready to Ship 도매가) / retail(소매 판매가) / resale(리셀·프리미엄 가격)
+  - tiers: 페이지에 수량 구간별 가격표(1688 起批量·Alibaba "2-99 pieces / 100-499 / ≥500"·まとめ買い)가 있으면 **모든 구간**을
+    [{"min_qty": 구간 최소 수량, "price": 그 구간 단가(currency 통화)}] 로 적으세요. 4번이 몇 개를 주문해야 가장 이익인지 계산합니다. 없으면 null
   - variant: 이 단가가 가리키는 상품을 짧게 (예: "4구 LED형", "M5 30팩 박스"). evidence: 가격 근거 원문과 URL
 - specs (제품 사양, 3번 통관·규제 체크가 씀): 이 업체의 **상품 상세 페이지에서 확인한 사실만** 적으세요.
   - 확실하지 않으면 null. 추측으로 false 를 넣지 마세요 (false 는 "없다"고 확인했을 때만).
@@ -89,6 +91,7 @@
   },
   "price_basis": {"currency": null, "low": null, "high": null, "fx_assumed": null,
                   "includes_shipping": null, "includes_tax": null, "preorder": null, "kind": null, "variant": null,
+                  "tiers": [{"min_qty": 2, "price": 13.9}, {"min_qty": 100, "price": 11.5}],
                   "evidence": [{"claim": "JPY 2,980 税込 送料別", "url": "https://..."}]},
   "packaging": {"unit_weight_kg": null, "unit_size_cm": null, "pcs_per_carton": null,
                 "carton_weight_kg": null, "carton_size_cm": null,

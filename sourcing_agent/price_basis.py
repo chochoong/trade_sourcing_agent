@@ -8,6 +8,8 @@
    "preorder": true,
    "kind": "factory|wholesale|retail|resale",       공장 / 도매 / 소매 / 리셀
    "variant": "4구 LED형",                           이 단가가 가리키는 상품 (모델·구성·규격)
+   "tiers": [{"min_qty": 2, "price": 13.9}, {"min_qty": 100, "price": 11.5}],   수량 구간별 단가 (원래 통화)
+                                                     → 4번이 몇 개를 주문해야 가장 이익인지 계산
    "evidence": [{"claim": ..., "url": ...}]}
 확인한 값만 넣고 모르는 키는 아예 뺌. 확인한 값이 하나도 없으면 None (저장 안 함).
 unit_price_usd 는 지금처럼 범위의 높은 쪽(USD) — 여기와 별개.
@@ -64,6 +66,21 @@ def kind_of(v):
     return s if s in KINDS else None
 
 
+def normalize_tiers(v):
+    """[{"min_qty": 100, "price": 11.5}, …] → 수량 오름차순, 같은 수량은 하나만, 최대 8구간. 모르면 None."""
+    if not isinstance(v, list):
+        return None
+    by_qty = {}
+    for t in v:
+        if not isinstance(t, dict):
+            continue
+        q, p = _num(t.get("min_qty")), _num(t.get("price"))
+        if q and p:
+            by_qty.setdefault(int(q), p)
+    tiers = [{"min_qty": q, "price": by_qty[q]} for q in sorted(by_qty)][:8]
+    return tiers or None
+
+
 def normalize_price_basis(v):
     if not isinstance(v, dict):
         return None
@@ -91,6 +108,9 @@ def normalize_price_basis(v):
     variant = str(v.get("variant") or "").strip()
     if variant and variant.lower() not in ("null", "none"):
         out["variant"] = variant[:80]
+    tiers = normalize_tiers(v.get("tiers"))
+    if tiers:
+        out["tiers"] = tiers
     if not out:
         return None
     ev = [{"claim": str(e.get("claim") or ""), "url": e.get("url")} for e in (v.get("evidence") or [])
@@ -136,6 +156,8 @@ def price_basis_text(b):
         parts.append("배송비 포함" if b["includes_shipping"] else "배송비 별도")
     if b.get("includes_tax"):
         parts.append("한국 관부가세 포함(DDP)")
+    if b.get("tiers"):
+        parts.append(f"{len(b['tiers'])}구간 (≥{b['tiers'][-1]['min_qty']:,}개 {b['tiers'][-1]['price']:g})")
     if b.get("kind"):
         parts.append({"factory": "공장가", "wholesale": "도매", "retail": "소매", "resale": "리셀"}[b["kind"]])
     if b.get("preorder"):

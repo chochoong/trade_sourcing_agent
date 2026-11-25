@@ -24,6 +24,13 @@ class PriceBasisTest(unittest.TestCase):
         self.assertIsNone(normalize_price_basis(None))
         self.assertNotIn("fx_assumed", normalize_price_basis({"currency": "USD", "low": 1, "fx_assumed": 1}))
 
+    def test_tiers(self):
+        b = normalize_price_basis({"currency": "USD", "tiers": [
+            {"min_qty": "500 pcs", "price": "11.0"}, {"min_qty": 2, "price": 13.9}, {"min_qty": 2, "price": 99},
+            {"min_qty": 100, "price": None}, "x"]})
+        self.assertEqual(b["tiers"], [{"min_qty": 2, "price": 13.9}, {"min_qty": 500, "price": 11}])
+        self.assertIsNone(normalize_price_basis({"tiers": []}))
+
     def test_market_api_fills_missing(self):
         snap = {"source": "AliExpress", "listings": [
             {"url": "https://www.aliexpress.com/item/1005001234567.html", "price_usd": 1.25}]}

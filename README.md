@@ -238,6 +238,7 @@ python -m sourcing_agent run requests/example.yaml > out.json
         "preorder": true,
         "kind": "retail",            // factory / wholesale / retail / resale (AliExpress·eBay 상품 페이지뿐이면 retail)
         "variant": "4구 LED형",      // 이 단가가 가리키는 상품. DB price_note 에도 "USD … — 4구 LED형" 으로 붙임
+        "tiers": [{"min_qty": 2, "price": 13.9}, {"min_qty": 100, "price": 11.5}],   // 수량 구간별 단가 (currency 통화) → 4번 최적 주문 수량
         "evidence": [{"claim": "JPY 2,980 税込 送料別", "url": "https://..."}]
       }
     }
