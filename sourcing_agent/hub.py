@@ -18,6 +18,7 @@ from trade_hub import db
 
 from .agent import log_stderr, run_discover, run_verify
 from .discover import parse_qty, parse_years
+from . import fx
 from .errors import SourcingError, friendly
 from .llm import LLM
 from .normalize import best_url, parse_usd_price
@@ -162,9 +163,10 @@ def found_suppliers(conn, product_id, purchase_mode):
 def apply_options(conn, p, req, options):
     """다시 찾기 옵션 → 소싱 조건에 반영.
 
-    options: {"max_price_usd": 20, "cheaper": True, "new_only": True, "note": "무브랜드 OEM 위주"}
-      max_price_usd  개당 단가 상한 (USD). 이보다 비싸다고 확인된 후보는 1차 필터에서 뺌
-      cheaper        지금까지 찾은 (같은 구매 방식) 최저 단가보다 싼 곳만 — 상한 = 그 최저 단가 (max_price_usd 와 함께면 낮은 쪽)
+    options: {"max_price_krw": 30000, "cheaper": True, "new_only": True, "note": "무브랜드 OEM 위주"}
+      max_price_krw  개당 단가 상한 (원화). 찾을 때는 공급 국가 통화(중국 CNY·일본 JPY·미국 USD)로 바꿔 지시하고,
+                     1차 필터는 USD 로 바꿔 비교 — 이보다 비싸다고 확인된 후보는 뺌
+      cheaper        지금까지 찾은 (같은 구매 방식) 최저 단가보다 싼 곳만 — 상한 = 그 최저 단가 (max_price_krw 와 함께면 낮은 쪽)
       new_only       이미 찾은 공급처는 빼고 새 곳만
       note           사람이 적은 추가 조건 (사양 완화, 브랜드 제외 등) — 검색·검증 모두 최우선으로 따름
     """
@@ -173,21 +175,38 @@ def apply_options(conn, p, req, options):
         return req
     found = found_suppliers(conn, p["id"], req.get("sourcing_type"))
     lines, applied = [], {}
-    cap = float(options["max_price_usd"]) if options.get("max_price_usd") else None
+    country = (req.get("preferred_countries") or ["China"])[0]
+    caps = []   # (USD 상한, 이유)
+    if options.get("max_price_krw"):
+        krw = float(options["max_price_krw"])
+        usd, _, _, _ = fx.krw_to(krw, "USD")
+        caps.append(usd)
+        applied["max_price_krw"] = int(krw)
     if options.get("cheaper"):
         prices = [x for _, x in found if isinstance(x, (int, float)) and x > 0]
         if prices:
-            cap = min([cap, min(prices)] if cap else [min(prices)])
+            caps.append(min(prices))
             applied["cheaper_than_usd"] = min(prices)
-            lines.append(f"- 지금까지 찾은 공급처 최저 단가는 USD {min(prices):g} 입니다. **이보다 싼 곳**을 찾으세요 "
-                         "(같은 상품 기준 — 사양을 낮춘 다른 물건으로 싸게 맞추지 말 것).")
+            lines.append(f"- 지금까지 찾은 공급처 최저 단가는 약 {fx.usd_to_krw(min(prices)):,.0f}원 (USD {min(prices):g}) 입니다. "
+                         "**이보다 싼 곳**을 찾으세요 (같은 상품 기준 — 사양을 낮춘 다른 물건으로 싸게 맞추지 말 것).")
         else:
             lines.append("- 더 싼 곳 찾기: 지금까지 단가가 확인된 공급처가 없어 상한 없이 가장 싼 곳 위주로 찾으세요.")
-    if cap:
-        req["max_unit_price_usd"] = round(cap, 2)
-        applied["max_unit_price_usd"] = req["max_unit_price_usd"]
-        lines.append(f"- 개당 단가 상한: USD {cap:g}. 이 값 이하로 살 수 있는 곳만 후보에 넣고, 싼 순서로 우선 찾으세요. "
-                     "1688 공장 직판·Alibaba 제조사·무브랜드(OEM) 상품처럼 단가가 낮은 경로를 넓게 검색하세요.")
+    if caps:
+        usd = min(caps)
+        krw = fx.usd_to_krw(usd)
+        local, cur, krw_per_unit, source = fx.krw_to(krw, fx.COUNTRY_CURRENCY.get(country, "USD"))
+        req["max_unit_price_usd"] = round(usd, 2)
+        req["max_unit_price_krw"] = int(round(krw, -1))
+        req["max_unit_price_local"] = {"currency": cur, "amount": round(local, 2), "krw_per_unit": round(krw_per_unit, 4),
+                                       "fx_source": source}
+        applied.update(max_unit_price_krw=req["max_unit_price_krw"], max_unit_price_local=f"{cur} {local:,.2f}",
+                       max_unit_price_usd=req["max_unit_price_usd"], fx_source=source)
+        local_txt = f"{cur} {local:,.2f}" if cur != "USD" else f"USD {local:,.2f}"
+        lines.append(f"- 개당 단가 상한: {krw:,.0f}원 = **{local_txt}** (1 {cur} = {krw_per_unit:,.2f}원, {source})"
+                     + (f" ≈ USD {usd:,.2f}" if cur != "USD" else "") + ". "
+                     f"현지 판매가({cur})로 이 값 이하인 곳만 후보에 넣고, 싼 순서로 우선 찾으세요. "
+                     "공장 직판·제조사·무브랜드(OEM) 상품처럼 단가가 낮은 경로를 넓게 검색하세요. "
+                     "price_range 는 지금처럼 USD 로 쓰고 원래 통화를 괄호로 붙이세요.")
     if options.get("new_only") and found:
         req["exclude_suppliers"] = sorted({n for n, _ in found if n})
         applied["exclude_suppliers"] = len(req["exclude_suppliers"])

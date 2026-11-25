@@ -99,15 +99,17 @@ python -m sourcing_agent from-db 17 --type oem --max-qty 100   # 특정 품목�
 ### 다시 찾기 옵션
 
 번호를 지정해 다시 찾을 때 조건을 덧붙일 수 있습니다 (세 구매 방식 모두). 옵션은 소싱 조건의 맨 앞 "다시 찾기 조건"과
-`max_unit_price_usd`·`exclude_suppliers`·`rerun_options` 로 들어가고, 1차 필터도 따릅니다.
+`max_unit_price_krw`·`max_unit_price_local`(공급 국가 통화)·`max_unit_price_usd`(1차 필터 비교용)·`exclude_suppliers`·`rerun_options` 로 들어가고, 1차 필터도 따릅니다.
 
 ```bash
 python -m sourcing_agent from-db 21 --type oem --cheaper                 # 지금까지 찾은 최저 단가보다 싼 곳만
-python -m sourcing_agent from-db 21 --type oem --max-price 25            # 개당 USD 25 이하만
+python -m sourcing_agent from-db 21 --type oem --max-price 30000         # 개당 30,000원 이하만 (중국이면 CNY 로 바꿔 찾음)
 python -m sourcing_agent from-db 21 --type small_batch --new-only        # 이미 찾은 공급처 빼고 새 곳만
 python -m sourcing_agent from-db 21 --type oem --cheaper --new-only --note "무브랜드 OEM 위주"
 ```
 
+- `--max-price`: **원화**로 넣습니다. 찾을 때는 공급 국가 통화(중국 CNY·일본 JPY·미국 USD)로 바꿔 지시합니다.
+  환율은 4번·5번과 같은 공개 환율 API(open.er-api.com, 통화 코드만 보냄). 못 가져오면 예비값을 쓰고 조건에 '예비 환율'로 적습니다.
 - `--cheaper`: 같은 구매 방식으로 저장된 공급처의 `unit_price_usd`(범위의 높은 값) 중 최저값이 상한. `--max-price` 와 함께면 낮은 쪽.
   단가가 저장된 곳이 없으면 상한 없이 싼 곳 위주로 찾습니다.
 - 상한보다 비싸다고 확인된 후보는 1차 필터에서 빠지고, 가격을 모르는 후보는 남기되 뒤로 밀립니다.

@@ -7,7 +7,7 @@ from unittest import mock
 
 from trade_hub import db
 
-from sourcing_agent import hub
+from sourcing_agent import fx, hub
 from sourcing_agent.discover import prefilter
 
 
@@ -16,6 +16,10 @@ class RerunOptionsTest(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         self.env = mock.patch.dict(os.environ, {"TRADE_DB": str(Path(self.tmp.name) / "t.db")})
         self.env.start()
+        # 고정 환율 (네트워크 없이): 1 USD = 1,400원 = 7 CNY = 150 JPY
+        self.fx = mock.patch.object(fx, "per_usd", return_value=({"USD": 1.0, "KRW": 1400.0, "CNY": 7.0, "JPY": 150.0},
+                                                                 "테스트 환율"))
+        self.fx.start()
         self.conn = db.connect()
         with self.conn:
             self.pid = db.upsert_product(self.conn, "75% 키보드", stage="sourcing")
@@ -26,6 +30,7 @@ class RerunOptionsTest(unittest.TestCase):
 
     def tearDown(self):
         self.conn.close()
+        self.fx.stop()
         self.env.stop()
         self.tmp.cleanup()
 
@@ -46,9 +51,23 @@ class RerunOptionsTest(unittest.TestCase):
         self.assertTrue(r["notes"].startswith("## 다시 찾기 조건"))
         self.assertIn("무브랜드 OEM 위주", r["notes"])
 
-    def test_max_price_lower_wins(self):
-        self.assertEqual(self.req(cheaper=True, max_price_usd=25)["max_unit_price_usd"], 25)
-        self.assertEqual(self.req(cheaper=True, max_price_usd=50)["max_unit_price_usd"], 36)
+    def test_max_price_krw_lower_wins(self):
+        r = self.req(cheaper=True, max_price_krw=35000)          # 35,000원 = USD 25 < 최저 36
+        self.assertEqual(r["max_unit_price_usd"], 25)
+        self.assertEqual(r["max_unit_price_krw"], 35000)
+        self.assertEqual(r["max_unit_price_local"]["currency"], "CNY")   # 1번 추천 국가 없음 → China
+        self.assertEqual(r["max_unit_price_local"]["amount"], 175)
+        self.assertIn("CNY 175.00", r["notes"])
+        self.assertEqual(self.req(cheaper=True, max_price_krw=70000)["max_unit_price_usd"], 36)
+
+    def test_local_currency_by_country(self):
+        p = self.conn.execute("SELECT * FROM products WHERE id = ?", (self.pid,)).fetchone()
+        jp = hub.build_request(self.conn, p, "oem", country="Japan", options={"max_price_krw": 28000})
+        self.assertEqual(jp["max_unit_price_local"]["currency"], "JPY")
+        self.assertEqual(jp["max_unit_price_local"]["amount"], 3000)
+        us = hub.build_request(self.conn, p, "oem", country="USA", options={"max_price_krw": 28000})
+        self.assertEqual(us["max_unit_price_local"], {"currency": "USD", "amount": 20, "krw_per_unit": 1400,
+                                                      "fx_source": "테스트 환율"})
 
     def test_other_mode_not_counted(self):
         p = self.conn.execute("SELECT * FROM products WHERE id = ?", (self.pid,)).fetchone()
