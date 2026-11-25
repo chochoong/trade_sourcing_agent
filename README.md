@@ -94,7 +94,7 @@ python -m sourcing_agent from-db 17 --type oem --max-qty 100   # 특정 품목�
   `product_channels`(구매 사이트 순위)에 기록되고,
   `tasks`에 "공급처 검토" 할 일이 생깁니다. 품목 단계(stage)는 바꾸지 않습니다.
 - 한 번 조사한 품목은 공급처를 못 찾았어도 자동으로 다시 돌리지 않습니다. 다시 하려면 번호를 지정하세요.
-- 상세 검증은 후보 중 1차 필터를 통과한 **8곳**까지 합니다 (`shortlist_size`).
+- 상세 검증은 후보 중 1차 필터를 통과한 **5곳**까지 합니다 (`shortlist_size`).
 
 ### 다시 찾기 옵션
 
@@ -263,6 +263,9 @@ python -m sourcing_agent run requests/example.yaml > out.json
         "vs_competitors": "…", "verdict": "good",   // good / ok / weak / unknown (리뷰 부족 → 샘플 확인 필요)
         "sample_needed": false, "note": null, "evidence": [{"claim", "url"}], "checked_at": "2026-11-25"
       },                             // evidence_json 에도 {"claim","url","type":"quality"} 요약·불만·과장 의심 항목
+                                     // 판매처마다 모델명을 다르게 적어도 상품 코드(JAN·SKU)나 핵심 단어가 겹치면 한 번만 조사.
+                                     // 한 실행에 최대 QUALITY_MAX_MODELS(기본 3)개 모델. 미개봉 수집품(트레이딩카드 등)은
+                                     // 조사 생략 → {"verdict": "unknown", "sample_needed": false, "skipped": true, "note": "…"}
       "price_basis": {               // 가격 기준 (1.4~, 확인한 키만 — 모르는 키는 없음). 공용 DB trade_terms_json.price_basis
         "currency": "JPY", "low": 21000, "high": 42000, "fx_assumed": 154,
         "includes_shipping": false,  // 한국까지 배송비 포함 가격이면 true → 4번이 운임을 0으로

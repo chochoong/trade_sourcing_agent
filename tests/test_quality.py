@@ -71,5 +71,34 @@ class QualityTest(unittest.TestCase):
         self.assertIn("제품 품질", dict(_facts({"quality": q})))
 
 
+class GroupingSkipTest(unittest.TestCase):
+    def test_same_model_variants(self):
+        from sourcing_agent.quality import same_model
+        a = "Pokémon Card Game 30th CELEBRATION FUTURISTIC BOX (SKU tcg0572)"
+        b = "Pokemon Card Game MEGA 30th CELEBRATION FUTURISTIC BOX (YOSHIROTTEN Edition, JAN 4521329000000)"
+        c = "Pokemon Card Game MEGA Expansion Pack 30th CELEBRATION [M6a] Futuristic Box"
+        self.assertTrue(same_model(a, b) and same_model(a, c) and same_model(b, c))
+        self.assertTrue(same_model("AULA F75", "aula-f75"))
+        self.assertFalse(same_model("AULA F75", "AULA F75 Max"))
+        self.assertFalse(same_model("AULA F75", "Ajazz AK820 Pro"))
+
+    def test_grouped_once_and_collectible_skipped(self):
+        from unittest import mock
+        from sourcing_agent import quality
+        rs = [{"name": "A", "total": 70, "model": "Pokemon Card Game 30th Celebration Futuristic Box tcg0572"},
+              {"name": "B", "total": 60, "model": "Pokémon Card Game MEGA 30th CELEBRATION FUTURISTIC BOX"}]
+        with mock.patch.object(quality, "assess_model", return_value={"verdict": "ok", "review_sources": 3}) as am:
+            n = quality.assess_quality(None, [dict(r) for r in rs], {"product": "박스", "category": "생활"}, log=lambda m: None)
+        self.assertEqual((n, am.call_count), (1, 1))
+        out = [dict(r) for r in rs]
+        with mock.patch.object(quality, "assess_model") as am:
+            n = quality.assess_quality(None, out, {"product": "포켓몬카드 일본판 30주년 박스", "category": "취미/수집"},
+                                       log=lambda m: None)
+        self.assertEqual((n, am.call_count), (0, 0))
+        self.assertTrue(out[0]["quality"]["skipped"] and out[0]["quality"]["sample_needed"] is False)
+        self.assertNotIn("evidence", out[0])
+        self.assertIn("조사 생략", quality.quality_text(out[0]["quality"]))
+
+
 if __name__ == "__main__":
     unittest.main()

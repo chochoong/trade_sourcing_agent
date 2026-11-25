@@ -261,6 +261,7 @@ def build_request(conn, p, sourcing_type="small_batch", max_order_qty=None, coun
         "sourcing_type": sourcing_type,
         "product": p["name"],
         "product_en": p["search_keyword_en"] or p["name"],
+        "category": product_field(p, "category"),
         "hs_code": p["hs_code"],
         # 1번이 시장조사 중 본 대표 상품 페이지 → 같은 물건(사양)을 찾는 기준. 구매처 상품 페이지면 그 판매자도 후보로
         "reference_urls": [ref] if ref else None,
@@ -271,7 +272,7 @@ def build_request(conn, p, sourcing_type="small_batch", max_order_qty=None, coun
         "prefer_manufacturer": sourcing_type == "oem",
         "notes": "\n".join(notes) or None,
         "min_candidates": 15,
-        "shortlist_size": 8,
+        "shortlist_size": 5,
         "trade_hub_product_id": p["id"],
     }
     if max_order_qty:

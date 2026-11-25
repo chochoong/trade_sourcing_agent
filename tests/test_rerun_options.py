@@ -42,7 +42,7 @@ class RerunOptionsTest(unittest.TestCase):
         r = self.req()
         self.assertNotIn("max_unit_price_usd", r)
         self.assertNotIn("rerun_options", r)
-        self.assertEqual(r["shortlist_size"], 8)
+        self.assertEqual(r["shortlist_size"], 5)
 
     def test_cheaper_and_new_only(self):
         r = self.req(cheaper=True, new_only=True, note="무브랜드 OEM 위주")

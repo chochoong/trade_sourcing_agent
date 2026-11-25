@@ -96,7 +96,7 @@ def run_verify(run_dir, log=log_stderr) -> dict:
         results.append(enrich(verify_one(llm, c, request, rubric), market))
 
     if request.get("assess_quality", True):   # 제품 품질·리뷰 (모델별 1회). 요청에 assess_quality: false 면 건너뜀
-        assess_quality(llm, results, request, log=log, max_models=int(os.getenv("QUALITY_MAX_MODELS", "5")))
+        assess_quality(llm, results, request, log=log, max_models=int(os.getenv("QUALITY_MAX_MODELS", "3")))
 
     channels = []
     if request.get("assess_channels", True):   # 요청에 assess_channels: false 면 건너뜀 (API 호출 1회 절약)
