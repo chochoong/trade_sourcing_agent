@@ -46,14 +46,8 @@
   - tiers: 페이지에 수량 구간별 가격표(1688 起批量·Alibaba "2-99 pieces / 100-499 / ≥500"·まとめ買い)가 있으면 **모든 구간**을
     [{"min_qty": 구간 최소 수량, "price": 그 구간 단가(currency 통화)}] 로 적으세요. 4번이 몇 개를 주문해야 가장 이익인지 계산합니다. 없으면 null
   - variant: 이 단가가 가리키는 상품을 짧게 (예: "4구 LED형", "M5 30팩 박스"). evidence: 가격 근거 원문과 URL
-- competitive (경쟁 제품 대비 평가): 이 업체 상품을 같은 품목의 경쟁 제품 2~3개와 비교하세요.
-  - 경쟁 제품: reference_urls(시장조사 대표 상품), market_listings 판매 상위, 국내(쿠팡·네이버) 인기 상품 중 같은 용도·가격대
-  - attributes: 구매자가 이 품목을 고를 때 비교하는 핵심 사양 4~8개를 품목에 맞게 고르세요.
-    (예: 키보드·마우스 → 스위치, 배터리 용량, 폴링레이트, 연결 방식(2.4G/BT/유선), 핫스왑 / 생활용품 → 재질, 크기, 구성 수)
-    ours(이 제품)·competitor(가장 강한 경쟁 제품 값과 이름)·verdict("우위"|"열위"|"동등"). 확인 못 한 값은 null, verdict 도 null
-  - review: 이 상품(또는 같은 상품) 페이지의 평점(5점 만점)·리뷰 수·반복되는 불만 키워드. 못 찾으면 null
-  - summary: "경쟁 대비 우위/열위" 한두 문장 (예: "폴링레이트·핫스왑은 우위, 배터리는 열위 — 가격 대비 경쟁력 있음")
-  - 웹 검색으로 확인한 값만 쓰세요. 비교할 경쟁 제품을 못 찾으면 competitive 를 null 로.
+- model: 이 업체 상품의 **브랜드+모델명** (예: "AULA F75", "CIDOO QK75"). 상품 페이지에서 확인한 것만, 무브랜드·OEM 이면 null.
+  (제품 품질·리뷰는 다음 단계가 이 모델명으로 따로 조사합니다)
 - specs (제품 사양, 3번 통관·규제 체크가 씀): 이 업체의 **상품 상세 페이지에서 확인한 사실만** 적으세요.
   - 확실하지 않으면 null. 추측으로 false 를 넣지 마세요 (false 는 "없다"고 확인했을 때만).
   - 모델·옵션마다 사양이 다르면 위험한 쪽을 적으세요 (예: 일반형과 LED·전지형이 있으면 전지형 기준).
@@ -101,10 +95,7 @@
                   "includes_shipping": null, "includes_tax": null, "preorder": null, "kind": null, "variant": null,
                   "tiers": [{"min_qty": 2, "price": 13.9}, {"min_qty": 100, "price": 11.5}],
                   "evidence": [{"claim": "JPY 2,980 税込 送料別", "url": "https://..."}]},
-  "competitive": {"competitors": [{"name": "경쟁 제품명", "url": "https://...", "price": "29,000원"}],
-                  "attributes": [{"name": "폴링레이트", "ours": "1000Hz", "competitor": "8000Hz (A사)", "verdict": "열위"}],
-                  "review": {"rating": 4.6, "count": 1200, "complaints": ["더블클릭"]},
-                  "summary": "경쟁 대비 우위/열위 한두 문장"},
+  "model": null,
   "packaging": {"unit_weight_kg": null, "unit_size_cm": null, "pcs_per_carton": null,
                 "carton_weight_kg": null, "carton_size_cm": null,
                 "evidence": [{"claim": "Gross weight 0.35kg, 50pcs/carton 60x40x35cm", "url": "https://..."}]}

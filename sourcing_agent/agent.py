@@ -6,6 +6,7 @@
 진행 로그는 stderr 로만 나가고, 반환값/CLI stdout 에는 JSON 만 나옵니다.
 """
 import json
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -20,6 +21,7 @@ from .marketplaces import compact, enrich, market_snapshot
 from .paths import OUTPUT
 from .report import write_reports
 from .scoring import DEFAULT_SOURCING_TYPE, load_rubric
+from .quality import assess_quality
 from .verify import verify_one
 
 load_dotenv()
@@ -92,6 +94,9 @@ def run_verify(run_dir, log=log_stderr) -> dict:
     for i, c in enumerate(shortlist, 1):
         log(f"[2/2] 검증 중 ({i}/{len(shortlist)}): {c.get('name')}")
         results.append(enrich(verify_one(llm, c, request, rubric), market))
+
+    if request.get("assess_quality", True):   # 제품 품질·리뷰 (모델별 1회). 요청에 assess_quality: false 면 건너뜀
+        assess_quality(llm, results, request, log=log, max_models=int(os.getenv("QUALITY_MAX_MODELS", "5")))
 
     channels = []
     if request.get("assess_channels", True):   # 요청에 assess_channels: false 면 건너뜀 (API 호출 1회 절약)

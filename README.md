@@ -231,12 +231,15 @@ python -m sourcing_agent run requests/example.yaml > out.json
         "per_unit_cbm": 0.00168,     // 카톤 부피 ÷ 카톤당 수량 (없으면 개별 포장 부피), ㎥
         "evidence": [{"claim": "Gross weight 0.35kg, 50pcs/carton", "url": "https://..."}]
       },
-      "competitive": {               // 경쟁 제품 대비 평가 (1.5~, 확인한 값만, 모르면 null)
-        "competitors": [{"name": "로지텍 G304", "url": "https://...", "price": "29,000원"}],
-        "attributes": [{"name": "폴링레이트", "ours": "1000Hz", "competitor": "8000Hz (A사)", "verdict": "열위"}],  // 우위/열위/동등
-        "review": {"rating": 4.6, "count": 1200, "complaints": ["더블클릭"]},
-        "summary": "폴링레이트·핫스왑 우위, 배터리 열위"
-      },                             // 공용 DB: evidence_json 에 {"claim","url","type":"competitive"} 항목으로 덧붙임
+      "model": "AULA F75",           // 브랜드+모델 (1.5~, 상품 페이지에서 확인, 무브랜드면 null)
+      "quality": {                   // 제품 품질·리뷰 (1.5~, 모델별 1회 조사). 공용 DB product_suppliers.quality_json (칸이 있을 때)
+        "model": "AULA F75", "review_sources": 6, "review_count_total": 3400,
+        "pros": [{"point": "타건감 좋음", "url": "https://..."}], "cons": [{"point": "2.4G 연결 끊김", "url": "https://..."}],
+        "spec_doubts": [{"spec": "배터리", "claimed": "4000mAh", "observed": "3~4일", "status": "exaggerated", "url": "..."}],
+        "competitors": [...], "attributes": [{"name": "연결 방식", "ours": "…", "competitor": "…", "verdict": "우위"}],
+        "vs_competitors": "…", "verdict": "good",   // good / ok / weak / unknown (리뷰 부족 → 샘플 확인 필요)
+        "sample_needed": false, "note": null, "evidence": [{"claim", "url"}], "checked_at": "2026-11-25"
+      },                             // evidence_json 에도 {"claim","url","type":"quality"} 요약·불만·과장 의심 항목
       "price_basis": {               // 가격 기준 (1.4~, 확인한 키만 — 모르는 키는 없음). 공용 DB trade_terms_json.price_basis
         "currency": "JPY", "low": 21000, "high": 42000, "fx_assumed": 154,
         "includes_shipping": false,  // 한국까지 배송비 포함 가격이면 true → 4번이 운임을 0으로

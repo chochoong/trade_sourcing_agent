@@ -24,7 +24,8 @@ class LLM:
         self.max_searches = {
             "discover": int(os.getenv("MAX_SEARCHES_DISCOVER", "15")),
             "verify": int(os.getenv("MAX_SEARCHES_VERIFY", "12")),
-            "channels": int(os.getenv("MAX_SEARCHES_CHANNELS", "8")),   # 구매 사이트 비교 (실행 1회에 1번)
+            "channels": int(os.getenv("MAX_SEARCHES_CHANNELS", "8")),
+            "quality": int(os.getenv("MAX_SEARCHES_QUALITY", "10")),   # 제품 품질·리뷰 (모델 1개마다 1번)   # 구매 사이트 비교 (실행 1회에 1번)
         }
 
     def ask_json(self, system: str, user: str, use_search: bool = True, max_tokens: int = 32000,

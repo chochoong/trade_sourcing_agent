@@ -298,6 +298,9 @@ def save_results(conn, run_id, product_id, suppliers, report_path, purchase_mode
             # 제품 사양 (trade_hub v13~, 3번 통관·규제 체크가 읽음). 모르면 저장하지 않음 (예전 값 유지)
             if r.get("specs") and "specs_json" in db.LINK_FIELDS:
                 link["specs_json"] = r["specs"]
+            # 제품 품질·리뷰 (4번 보고서·대시보드가 마진 옆에 표시). trade_hub 에 quality_json 칸이 생기면 저장
+            if r.get("quality") and "quality_json" in db.LINK_FIELDS:
+                link["quality_json"] = r["quality"]
             db.link_supplier(conn, product_id, sid, run_id, **link)
         name = conn.execute("SELECT name FROM products WHERE id = ?", (product_id,)).fetchone()["name"]
         n = len(suppliers)
