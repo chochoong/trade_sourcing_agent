@@ -5,12 +5,13 @@ from datetime import datetime
 from html import escape
 from pathlib import Path
 
+from .competitive import competitive_text
 from .packaging import packaging_text
 from .price_basis import price_basis_text
 
 # results.json 형식이 바뀌면 올립니다. 다음 단계 에이전트는 이 값을 확인하고 읽으세요.
 #   1.x: 필드 추가만 (하위 호환)   2.0: 필드 삭제/의미 변경
-SCHEMA_VERSION = "1.4"   # 1.1: suppliers[].specs (제품 사양) · 1.2: suppliers[].packaging (포장·무게) · 1.4: suppliers[].price_basis
+SCHEMA_VERSION = "1.5"   # 1.1: suppliers[].specs (제품 사양) · 1.2: suppliers[].packaging (포장·무게) · 1.4: suppliers[].price_basis · 1.5: suppliers[].competitive
 #   1.3: request.market_listings (AliExpress·eBay 공식 API 판매 상품) · suppliers[].market_listing. 모르면 null
 
 
@@ -77,7 +78,7 @@ def write_reports(results: list[dict], request: dict, out_dir, channels: list[di
     csv_path = out_dir / "results.csv"
     cols = ["순위", "업체명", "국가", "유형", "업력", "인증", "MOQ", "단가대",
             "총점", "등급", "리스크", "미확인", "수동정보",
-            "담당자", "이메일", "전화", "메신저", "리드타임", "결제조건", "샘플", "한국 배송", "포장·무게", "가격 기준", "링크"]
+            "담당자", "이메일", "전화", "메신저", "리드타임", "결제조건", "샘플", "한국 배송", "포장·무게", "가격 기준", "경쟁 대비", "링크"]
     with open(csv_path, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)
         w.writerow(cols)
@@ -90,7 +91,7 @@ def write_reports(results: list[dict], request: dict, out_dir, channels: list[di
                         "O" if r.get("manual_info_used") else "",
                         c.get("contact_person"), c.get("email"), c.get("phone"), c.get("messenger"),
                         t.get("lead_time"), t.get("payment_terms"), t.get("sample"), _korea_ship(t), packaging_text(r.get("packaging")),
-                        price_basis_text(r.get("price_basis")),
+                        price_basis_text(r.get("price_basis")), competitive_text(r.get("competitive")),
                         _j(r.get("urls"))])
 
     rubric = _rubric(request)
@@ -178,6 +179,7 @@ def _facts(r):
         ("리드타임", _j(t.get("lead_time"))), ("결제조건", _j(t.get("payment_terms"))), ("샘플", _j(t.get("sample"))),
         ("한국 배송", _korea_ship(t)),
         ("포장·무게", packaging_text(r.get("packaging"))),
+        ("경쟁 대비", competitive_text(r.get("competitive"))),
     ]
     return [(k, v) for k, v in rows if v]
 

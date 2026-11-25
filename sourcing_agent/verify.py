@@ -5,6 +5,7 @@ import anthropic
 import yaml
 
 from .errors import friendly
+from .competitive import competitive_evidence, normalize_competitive
 from .discover import is_retail_listing, ships_to_korea
 from .manual import read_manual
 from .normalize import order_urls, parse_usd_price
@@ -91,6 +92,8 @@ def verify_one(llm, candidate: dict, request: dict, rubric: dict) -> dict:
     price_range = v.get("price_range") or candidate.get("price_range")
 
     result = compute(v, rubric)
+    competitive = normalize_competitive(v.get("competitive"))
+    evidence += competitive_evidence(competitive, urls[0] if urls else None)   # 경쟁 제품 대비 평가 → evidence_json
     basis = normalize_price_basis(v.get("price_basis"))
     if candidate.get("variant") and not (basis or {}).get("variant"):   # 검색 단계에서 적은 변형
         basis = {**(basis or {}), "variant": str(candidate["variant"])[:80]}
@@ -112,5 +115,6 @@ def verify_one(llm, candidate: dict, request: dict, rubric: dict) -> dict:
         "manual_info_used": bool(manual),
         "specs": normalize_specs(v.get("specs")),   # 제품 사양 (3번 통관·규제 체크용). 모르면 None
         "packaging": normalize_packaging(v.get("packaging")),   # 포장·무게 (4번 운임 추정용). 모르면 None
-        "price_basis": basis,   # 가격 기준: 통화·배송비 포함 여부·공장/도매/소매·어떤 상품인지 (4번 원가 계산용). 모르면 None
+        "price_basis": basis,
+        "competitive": competitive,   # 경쟁 제품 대비 사양·리뷰 비교 (우위/열위). 모르면 None   # 가격 기준: 통화·배송비 포함 여부·공장/도매/소매·어떤 상품인지 (4번 원가 계산용). 모르면 None
     }

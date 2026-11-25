@@ -231,6 +231,12 @@ python -m sourcing_agent run requests/example.yaml > out.json
         "per_unit_cbm": 0.00168,     // 카톤 부피 ÷ 카톤당 수량 (없으면 개별 포장 부피), ㎥
         "evidence": [{"claim": "Gross weight 0.35kg, 50pcs/carton", "url": "https://..."}]
       },
+      "competitive": {               // 경쟁 제품 대비 평가 (1.5~, 확인한 값만, 모르면 null)
+        "competitors": [{"name": "로지텍 G304", "url": "https://...", "price": "29,000원"}],
+        "attributes": [{"name": "폴링레이트", "ours": "1000Hz", "competitor": "8000Hz (A사)", "verdict": "열위"}],  // 우위/열위/동등
+        "review": {"rating": 4.6, "count": 1200, "complaints": ["더블클릭"]},
+        "summary": "폴링레이트·핫스왑 우위, 배터리 열위"
+      },                             // 공용 DB: evidence_json 에 {"claim","url","type":"competitive"} 항목으로 덧붙임
       "price_basis": {               // 가격 기준 (1.4~, 확인한 키만 — 모르는 키는 없음). 공용 DB trade_terms_json.price_basis
         "currency": "JPY", "low": 21000, "high": 42000, "fx_assumed": 154,
         "includes_shipping": false,  // 한국까지 배송비 포함 가격이면 true → 4번이 운임을 0으로
