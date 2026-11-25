@@ -58,7 +58,7 @@
     "platform_badges": ["Verified Supplier", "Gold Supplier 6yrs"],
     "certifications": ["FDA", "LFGB"],
     "moq": "500 pcs 또는 null",
-    "price_range": "USD 1.8-2.6 또는 null",
+    "price_range": "USD 1.8-2.6 또는 null (범위가 옵션별이면 요청 품목 옵션 가격만)",
     "variant": "price_range 가 가리키는 상품 (예: 4구 LED형) 또는 null",
     "contacts": {
       "contact_person": "담당자명 또는 null",

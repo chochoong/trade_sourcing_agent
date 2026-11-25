@@ -66,6 +66,25 @@ def kind_of(v):
     return s if s in KINDS else None
 
 
+_HOST_KINDS = (
+    (("aliexpress.", "ebay.", "amazon.", "rakuten.", "shopping.yahoo.", "temu.", "coupang.", "smartstore."), "retail"),
+    (("mercari.", "fril.jp", "kream.", "bunjang.", "stockx."), "resale"),
+    (("alibaba.com", "1688.com", "made-in-china.", "globalsources.", "dhgate.", "netsea.", "superdelivery.", "tradekorea."),
+     "wholesale"),
+)
+
+
+def kind_from_urls(urls, company_type=None):
+    """상품 페이지 주소로 가격 종류 추정. 도매 플랫폼의 제조사면 factory. 모르면 None. (첫 주소 = 상품 상세 우선)"""
+    for u in [str(x).lower() for x in urls or [] if x]:
+        for hosts, kind in _HOST_KINDS:
+            if any(h in u for h in hosts):
+                if kind == "wholesale" and str(company_type or "").lower() in ("manufacturer", "제조사"):
+                    return "factory"
+                return kind
+    return None
+
+
 def normalize_tiers(v):
     """[{"min_qty": 100, "price": 11.5}, …] → 수량 오름차순, 같은 수량은 하나만, 최대 8구간. 모르면 None."""
     if not isinstance(v, list):

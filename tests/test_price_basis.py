@@ -24,6 +24,14 @@ class PriceBasisTest(unittest.TestCase):
         self.assertIsNone(normalize_price_basis(None))
         self.assertNotIn("fx_assumed", normalize_price_basis({"currency": "USD", "low": 1, "fx_assumed": 1}))
 
+    def test_kind_from_urls(self):
+        from sourcing_agent.price_basis import kind_from_urls
+        self.assertEqual(kind_from_urls(["https://www.alibaba.com/product-detail/x.html"], "manufacturer"), "factory")
+        self.assertEqual(kind_from_urls(["https://detail.1688.com/offer/1.html"], "trading"), "wholesale")
+        self.assertEqual(kind_from_urls(["https://item.rakuten.co.jp/a/b/"]), "retail")
+        self.assertEqual(kind_from_urls(["https://jp.mercari.com/item/m1"]), "resale")
+        self.assertIsNone(kind_from_urls(["https://example.com"]))
+
     def test_tiers(self):
         b = normalize_price_basis({"currency": "USD", "tiers": [
             {"min_qty": "500 pcs", "price": "11.0"}, {"min_qty": 2, "price": 13.9}, {"min_qty": 2, "price": 99},

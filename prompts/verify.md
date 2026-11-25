@@ -33,6 +33,10 @@
   판매가·판매 수·평점·상점 평점·판매자 피드백·포장 무게를 확인된 근거로 쓰고 evidence 에 "마켓 API: …"로 적으세요.
   같은 품목의 다른 판매 상품 가격(`price_usd`)과 비교해 이 업체 단가가 지나치게 높거나 낮으면 summary 에 적으세요.
 - price_range: 요청 수량에 해당하는 단가를 확인했으면 `"USD 최저-최고"` 형식으로 적으세요 (위안·엔이면 USD 로 환산하고 원문을 괄호로). 모르면 null.
+  **페이지 가격이 범위(예: USD 4.42-11.20)면 반드시 그 이유를 확인하세요** — 4번은 범위의 높은 쪽을 단가로 써서 원가가 부풀려집니다.
+  - 수량 구간 때문이면: price_range 는 요청 수량(max_order_qty) 구간의 단가만, 모든 구간은 price_basis.tiers 에
+  - 옵션(크기·단수·구성) 때문이면: 요청 품목에 맞는 옵션의 가격만 price_range 에, 그 옵션을 price_basis.variant 에
+  - 이유를 확인 못 했으면 범위 그대로 두고 risk_flags 에 "가격 범위 이유 미확인"
 - **한 품목 = 같은 상품**: 단가는 요청 품목(product·reference_urls)과 같은 모델·구성·규격의 가격이어야 합니다.
   업체가 여러 변형(구성 수·사이즈·LED 유무·한정판 등)을 팔면 요청 품목에 맞는 변형의 가격을 적고,
   맞는 변형이 없으면 가장 가까운 변형의 가격을 적은 뒤 risk_flags 에 "다른 변형: …"으로 적으세요.
@@ -42,7 +46,8 @@
     배송비가 따로 붙으면 false. **중요** — 4번이 운임을 이중으로 더하지 않게 씀. 국내 무료배송만이면 false.
   - includes_tax: **한국 관세·부가세까지 포함된 가격(DDP, "관부가세 포함"·"Duties & taxes included to Korea")일 때만** true.
     판매국 세금(일본 소비세 税込·중국 增值税·미국 sales tax)만 포함된 경우는 null 로 두세요. preorder: 예약판매(予約·Pre-order)면 true
-  - kind: factory(공장 출고가) / wholesale(도매몰·Ready to Ship 도매가) / retail(소매 판매가) / resale(리셀·프리미엄 가격)
+  - kind: factory(공장 출고가) / wholesale(도매몰·Ready to Ship 도매가) / retail(소매 판매가) / resale(리셀·프리미엄 가격). **항상 채우세요**
+    (AliExpress·Amazon·라쿠텐 판매가 = retail, Alibaba·1688 공장 = factory, 무역상·도매몰 = wholesale)
   - tiers: 페이지에 수량 구간별 가격표(1688 起批量·Alibaba "2-99 pieces / 100-499 / ≥500"·まとめ買い)가 있으면 **모든 구간**을
     [{"min_qty": 구간 최소 수량, "price": 그 구간 단가(currency 통화)}] 로 적으세요. 4번이 몇 개를 주문해야 가장 이익인지 계산합니다. 없으면 null
   - variant: 이 단가가 가리키는 상품을 짧게 (예: "4구 LED형", "M5 30팩 박스"). evidence: 가격 근거 원문과 URL
@@ -58,8 +63,10 @@
   - synthetic_resin_household: 전기 없는 합성수지(플라스틱·TPE·PVC·EVA·고무) 생활용품 / textile_wearable: 섬유 제품이거나 몸에 착용
   - origin_country: 생산국 ISO 2자리 코드 (예: CN, VN). 페이지에 "Place of Origin" 등으로 적힌 경우만
   - materials: 페이지에 적힌 재질 (예: ["ABS", "실리콘"]). evidence: 사양 근거 [{"claim": "리튬 배터리 300mAh", "url": "상품 페이지"}]
-- packaging (포장·무게, 4번 원가 계산이 국제운임 추정에 씀): 상품 상세 페이지의 "Packaging & delivery"·"Package size"·
-  "Gross weight"·"Packing"(装箱数·外箱尺寸·毛重)·商品サイズ·重量 같은 항목에서 **확인한 값만** 적으세요. 모르면 null.
+- packaging (포장·무게, 4번 원가 계산이 국제운임 추정에 씀 — 없으면 개당 $0.5 예비값이라 큰 제품은 운임이 크게 틀림):
+  상품 상세 페이지에서 **반드시 찾아보고** 확인한 값만 적으세요. 모르면 null. 찾을 항목:
+  Alibaba "Packaging & delivery" 의 Selling units·Single package size·Single gross weight / 1688 「包装信息」「件重尺」(装箱数·外箱尺寸·毛重)
+  / AliExpress·Amazon "Package Dimensions"·"Item Weight" / 일본 商品サイズ·重量·梱包サイズ / 그 밖의 "Package size"·"Gross weight"
   - unit_weight_kg: 개당 무게 kg (포장 포함 무게가 있으면 그 값) / unit_size_cm: 개별 포장 크기 [가로, 세로, 높이] cm
   - pcs_per_carton: 수출 카톤 1개에 든 수량 / carton_weight_kg: 카톤 총무게 / carton_size_cm: 카톤 크기 [가로, 세로, 높이] cm
   - 단위가 g·lb·mm·inch 면 kg·cm 로 바꾸세요. evidence 에 원문 표기와 URL 을 남기세요.

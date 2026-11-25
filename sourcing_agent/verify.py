@@ -11,7 +11,7 @@ from .normalize import order_urls, parse_usd_price
 from .paths import PROMPTS
 from .scoring import compute, rubric_text
 from .packaging import normalize_packaging
-from .price_basis import normalize_price_basis
+from .price_basis import kind_from_urls, normalize_price_basis
 from .specs import normalize_specs
 
 # 업체를 바꿔도 똑같이 실패할 오류 → 전체 실행을 즉시 중단
@@ -96,6 +96,10 @@ def verify_one(llm, candidate: dict, request: dict, rubric: dict) -> dict:
         basis = {**(basis or {}), "variant": str(candidate["variant"])[:80]}
     if is_retail_listing({"urls": urls}) and not (basis or {}).get("kind"):   # AliExpress·eBay 상품 페이지뿐 → 소매가
         basis = {**(basis or {}), "kind": "retail"}
+    if not (basis or {}).get("kind"):   # AI 가 비워 두면 판매 사이트·업체 유형으로 (4번이 소매가를 공장가로 쓰지 않게)
+        kind = kind_from_urls(urls, candidate.get("company_type"))
+        if kind:
+            basis = {**(basis or {}), "kind": kind}
     return {
         **candidate,
         **result,
